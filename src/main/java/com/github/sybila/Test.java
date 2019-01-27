@@ -1,6 +1,5 @@
 package com.github.sybila;
 
-import com.github.sybila.checker.Model;
 import com.github.sybila.checker.SequentialChecker;
 import com.github.sybila.checker.Solver;
 import com.github.sybila.checker.StateMap;
@@ -12,7 +11,6 @@ import com.github.sybila.ode.generator.rect.RectangleOdeModel;
 import com.github.sybila.ode.generator.rect.RectangleSolver;
 import com.github.sybila.ode.model.OdeModel;
 import com.github.sybila.ode.model.Parser;
-import kotlin.Pair;
 
 import java.io.File;
 import java.util.Set;
@@ -33,7 +31,7 @@ public class Test {
         int[] coords = encoder.decodeNode(10);
         int state = encoder.encodeVertex(coords);
 
-        HybridModel<Set<Rectangle>> hybrid = new HybridModel<>(solver);
+        HeaterHybridModel hybrid = new HeaterHybridModel(solver);
 
         SequentialChecker<Set<Rectangle>> checker = new SequentialChecker<>(hybrid);
 
