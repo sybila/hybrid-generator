@@ -1,6 +1,7 @@
 package com.github.sybila
 
 import com.github.sybila.checker.Checker
+import com.github.sybila.checker.SequentialChecker
 import com.github.sybila.huctl.CompareOp
 import com.github.sybila.huctl.Expression
 import com.github.sybila.huctl.Formula
@@ -90,9 +91,12 @@ class HeaterHybridModelTest {
 
     @Test
     fun verifier() {
-        Checker(heater).use { checker ->
+        SequentialChecker(heater).use { checker ->
             val formula = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.LT, Expression.Constant(100.0))
             val r = checker.verify(formula)
+            // [] = empty set
+            // [[]] = "full set"
+            // [[3.14, 5.5], [6.7, 8.9]]
             assertTrue { true }
         }
     }

@@ -1,6 +1,7 @@
 package com.github.sybila
 
 import com.github.sybila.checker.*
+import com.github.sybila.checker.map.mutable.HashStateMap
 import com.github.sybila.huctl.*
 import com.github.sybila.ode.generator.CutStateMap
 import com.github.sybila.ode.generator.LazyStateMap
@@ -127,6 +128,14 @@ class HeaterHybridModel(
         }
         val dimensionSize = model.variables[dimension].thresholds.size - 1
 
+        val result = HashStateMap(ff)
+        for (state in 0 until stateCount) {
+            if (/* proposition condition */) {
+                result[state] = tt
+            }
+        }
+        return result
+/*
         val encoder = hybridEncoder.modelEncoders["on"] ?: throw Exception()
         return CutStateMap(
                 encoder = encoder,
@@ -142,6 +151,7 @@ class HeaterHybridModel(
                     (stateCount / dimensionSize) * (threshold - 1)
                 }
         )
+*/
     }
 
     private val PositiveIn = 0
