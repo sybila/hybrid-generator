@@ -13,12 +13,10 @@ class HybridNodeEncoder(
                 Pair(entry.key, NodeEncoder(entry.value))
             }.toTypedArray())
     )
-    val statesPerModel = max(modelEncoders.map{encoder -> encoder.value.stateCount})
-    val verticesPerModel = max(modelEncoders.map{encoder -> encoder.value.vertexCount})
+    val statesPerModel = max(modelEncoders.map{ encoder -> encoder.value.stateCount})!!
     private val modelsOrder = listOf(*(models.keys.toTypedArray()))
 
     val stateCount: Int = models.count() * statesPerModel
-    // val vertexCount: Int = models.count() * verticesPerModel
 
     /**
      * Encode given coordinate array into a single number.
@@ -34,49 +32,32 @@ class HybridNodeEncoder(
      */
     fun decodeNode(node: Int): Pair<String, IntArray> {
         val modelIndex = node / statesPerModel
-        val modelKey = modelsOrder[modelIndex]
+        val modelKey = this.modelsOrder[modelIndex]
         val coordinatesInModel = modelEncoders[modelKey]!!.decodeNode(node % statesPerModel)
         return Pair(modelKey, coordinatesInModel)
     }
 
     fun decodeModel(node: Int): String {
-        val modelIndex = node / verticesPerModel
-        return modelsOrder[modelIndex]
+        val modelIndex = node / statesPerModel
+        return this.modelsOrder[modelIndex]
     }
 
-    fun encodeVertex(modelKey: String, coordinates: IntArray): Int {
-        val x = modelsOrder.indexOf(modelKey)
-        val modelIndex = x * verticesPerModel
-        val modelEncoder = modelEncoders[modelKey] ?: return -1
-        return modelIndex + modelEncoder.encodeVertex(coordinates)
+    fun coordinate(of: Int, dim: Int): Int {
+        val modelIndex = of / statesPerModel
+        val modelKey = this.modelsOrder[modelIndex]
+        return modelEncoders[modelKey]!!.coordinate(of % statesPerModel, dim)
     }
 
-    fun vertexCoordinate(vertex: Int, dim: Int): Int {
-        val modelIndex = vertex / verticesPerModel
-        val modelKey = modelsOrder[modelIndex]
-        val vertexInModel = vertex % verticesPerModel
-        return modelEncoders[modelKey]!!.vertexCoordinate(vertexInModel, dim)
+    fun nodeInHybrid(modelKey: String, node: Int): Int {
+        return modelsOrder.indexOf(modelKey) * statesPerModel + node
     }
 
-    fun vertexInModel(vertex: Int): Int {
-        return vertex % verticesPerModel
+    fun nodeInModel(node: Int): Int {
+        return stateCount % statesPerModel
     }
 
-    fun vertexInHybrid(modelKey: String, vertex: Int): Int {
-        val x = modelsOrder.indexOf(modelKey)
-        return x * verticesPerModel + vertex
-    }
 
     /**
-    fun nodeVertex(node: Int, vertexMask: Int): Int {
-        return (0 until dimensions).asSequence().map { dim ->
-            //compute vertex coordinates
-            coordinate(node, dim) + vertexMask.shr(dim).and(1)
-        }.foldIndexed(0) { i, acc, e ->
-            //transform to ID
-            acc + thresholdMultipliers[i] * e
-        }
-    }
 
     /**
      * Find an id node that is above given node in specified dimension.
@@ -114,6 +95,5 @@ class HybridNodeEncoder(
         return (of / dimensionMultipliers[dim]) % dimensionStateCounts[dim] + if (upper) 1 else 0
     }
 
-    fun coordinate(of: Int, dim: Int): Int = (of / dimensionMultipliers[dim]) % dimensionStateCounts[dim]
 */
 }

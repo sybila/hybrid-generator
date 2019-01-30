@@ -1,6 +1,5 @@
 package com.github.sybila
 
-import com.github.sybila.checker.Checker
 import com.github.sybila.checker.SequentialChecker
 import com.github.sybila.huctl.CompareOp
 import com.github.sybila.huctl.Expression
@@ -19,8 +18,8 @@ class HeaterHybridModelTest {
 
     @Test
     fun successor_jumpFromOnToOff_jumpsCorrectly() {
-        val thresholdTemp = heater.onModel.variables[0].thresholds.size - 1
-        val thresholdTempCoordinate = heaterEncoder.encodeVertex("on", intArrayOf(thresholdTemp, 10))
+        val thresholdTemp = heater.onModel.variables[0].thresholds.size - 2
+        val thresholdTempCoordinate = heaterEncoder.encodeNode("on", intArrayOf(thresholdTemp, 10))
         with (heater) {
             val jump = thresholdTempCoordinate.successors(true).next()
             val decodedTarget = heaterEncoder.decodeModel(jump.target)
@@ -31,7 +30,7 @@ class HeaterHybridModelTest {
     @Test
     fun successor_jumpFromOffToOn_jumpsCorrectly() {
         val thresholdTemp = 1
-        val thresholdTempCoordinate = heaterEncoder.encodeVertex("off", intArrayOf(thresholdTemp, 10))
+        val thresholdTempCoordinate = heaterEncoder.encodeNode("off", intArrayOf(thresholdTemp, 10))
         with (heater) {
             val jump = thresholdTempCoordinate.successors(true).next()
             val decodedTarget = heaterEncoder.decodeModel(jump.target)
@@ -42,7 +41,7 @@ class HeaterHybridModelTest {
     @Test
     fun successor_jumpFromOnToOn_jumpsCorrectly() {
         val stableTemp = heater.onModel.variables[0].thresholds.size / 2
-        val stableTempCoordinates = heaterEncoder.encodeVertex("on", intArrayOf(stableTemp, 2))
+        val stableTempCoordinates = heaterEncoder.encodeNode("on", intArrayOf(stableTemp, 2))
         with (heater) {
             val jump = stableTempCoordinates.successors(true).next()
             val decodedTarget = heaterEncoder.decodeModel(jump.target)
@@ -53,7 +52,7 @@ class HeaterHybridModelTest {
     @Test
     fun successor_jumpFromOffToOff_jumpsCorrectly() {
         val stableTemp = heater.onModel.variables[0].thresholds.size / 2
-        val stableTempCoordinates = heaterEncoder.encodeVertex("off", intArrayOf(stableTemp, 10))
+        val stableTempCoordinates = heaterEncoder.encodeNode("off", intArrayOf(stableTemp, 10))
         with (heater) {
             val successors = stableTempCoordinates.successors(true)
             val jump = successors.next()
@@ -69,10 +68,6 @@ class HeaterHybridModelTest {
         val onEncoder = heaterEncoder.modelEncoders["on"]
         assertNotNull(onEncoder)
         val node = onEncoder.encodeNode(intArrayOf(2, 5))
-        val vertex = onEncoder.encodeVertex(intArrayOf(2, 5))
-
-        val hybridVertex = heaterEncoder.encodeVertex("on", intArrayOf(2, 5))
-        assertEquals(vertex + heaterEncoder.verticesPerModel, hybridVertex)
 
         val hybridNode = heaterEncoder.encodeNode("on", intArrayOf(2, 5))
         assertEquals(node + heaterEncoder.statesPerModel, hybridNode)
@@ -81,18 +76,12 @@ class HeaterHybridModelTest {
         assertEquals("on", decoded.first)
         assertEquals(2, decoded.second[0])
         assertEquals(5, decoded.second[1])
-
-        val decodedVertexX = heaterEncoder.vertexCoordinate(vertex, 0)
-        val decodedVertexY = heaterEncoder.vertexCoordinate(vertex, 1)
-
-        assertEquals(decodedVertexX, 2)
-        assertEquals(decodedVertexY, 5)
     }
 
     @Test
     fun verifier() {
         SequentialChecker(heater).use { checker ->
-            val formula = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.LT, Expression.Constant(100.0))
+            val formula = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.LT, Expression.Constant(90.0))
             val r = checker.verify(formula)
             // [] = empty set
             // [[]] = "full set"
