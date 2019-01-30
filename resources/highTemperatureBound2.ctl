@@ -1,3 +1,3 @@
-temperature = temp < 95.0
+highBound = temp < 90.0
 
-high = AG temperature
+high = AG highBound

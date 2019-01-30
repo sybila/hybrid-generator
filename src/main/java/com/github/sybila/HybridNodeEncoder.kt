@@ -53,7 +53,7 @@ class HybridNodeEncoder(
     }
 
     fun nodeInModel(node: Int): Int {
-        return stateCount % statesPerModel
+        return node % statesPerModel
     }
 
 

@@ -5,6 +5,7 @@ import com.github.sybila.checker.map.mutable.HashStateMap
 import com.github.sybila.huctl.*
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleOdeModel
+import com.github.sybila.ode.model.OdeModel
 import com.github.sybila.ode.model.Parser
 import com.github.sybila.ode.model.computeApproximation
 import java.io.FileInputStream
@@ -13,11 +14,18 @@ import java.io.FileInputStream
  * Represents heater hybrid model
  */
 class HeaterHybridModel(
-        solver: Solver<MutableSet<Rectangle>>
+        solver: Solver<MutableSet<Rectangle>>,
+        parametrized: Boolean = false
 ) : Model<MutableSet<Rectangle>>, Solver<MutableSet<Rectangle>> by solver {
+    val onModel: OdeModel
+    val offModel: OdeModel
+    init {
+        val onPath = if (parametrized)  ".\\resources\\ParametrizedHeaterOnModel.bio" else ".\\resources\\HeaterOnModel.bio"
+        val offPath = if (parametrized)  ".\\resources\\ParametrizedHeaterOffModel.bio" else ".\\resources\\HeaterOffModel.bio"
 
-    val onModel = Parser().parse(FileInputStream(".\\resources\\HeaterOnModel.bio")).computeApproximation(false, false)
-    val offModel = Parser().parse(FileInputStream(".\\resources\\HeaterOffModel.bio")).computeApproximation(false, false)
+        onModel = Parser().parse(FileInputStream(onPath)).computeApproximation(false, false)
+        offModel = Parser().parse(FileInputStream(offPath)).computeApproximation(false, false)
+    }
     val onBoundsRect = onModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
     val offBoundsRect = offModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
     val hybridEncoder = HybridNodeEncoder(hashMapOf(Pair("on", onModel), Pair("off", offModel)))
@@ -32,7 +40,52 @@ class HeaterHybridModel(
     override fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<MutableSet<Rectangle>>> {
         if (!timeFlow)
             return this.successors(true)
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+
+        val model = hybridEncoder.decodeModel(this)
+        if (model == "off") {
+            val tempCoordinate = hybridEncoder.coordinate(this, 0)
+            val timeCoordinate = hybridEncoder.coordinate(this, 1)
+            val tempVal = onModel.variables[0].thresholds[tempCoordinate]
+            if (tempVal >= maxTransitionTemp) {
+                val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate, timeCoordinate))
+                return listOf(
+                        Transition(target, onModel.variables[1].name.increaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
+                ).iterator()
+            }
+
+            val valInModel = hybridEncoder.nodeInModel(this)
+            val modelSuccessors: Iterator<Transition<MutableSet<Rectangle>>>
+            with (offRectangleOdeModel) {
+                modelSuccessors = valInModel.predecessors(true)
+            }
+
+            return modelSuccessors.asSequence().map {
+                Transition(hybridEncoder.nodeInHybrid("off", it.target), it.direction, it.bound)
+            }.iterator()
+        }
+
+        if (model == "on") {
+            val tempCoordinate = hybridEncoder.coordinate(this, 0)
+            val timeCoordinate = hybridEncoder.coordinate(this, 1)
+            val tempVal = onModel.variables[0].thresholds[tempCoordinate]
+            if (tempVal <= minTransitionTemp) {
+                val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate, timeCoordinate))
+                return listOf(
+                        Transition(target, onModel.variables[1].name.increaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
+                ).iterator()
+            }
+
+            val valInModel = hybridEncoder.nodeInModel(this)
+            val modelSuccessors: Iterator<Transition<MutableSet<Rectangle>>>
+            with (onRectangleOdeModel) {
+                modelSuccessors = valInModel.predecessors(true)
+            }
+            return modelSuccessors.asSequence().map {
+                Transition(hybridEncoder.nodeInHybrid("on", it.target), it.direction, it.bound)
+            }.iterator()
+        }
+
+        throw IllegalArgumentException("State out of bounds")
     }
 
     override fun Int.successors(timeFlow: Boolean): Iterator<Transition<MutableSet<Rectangle>>> {

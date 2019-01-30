@@ -1,3 +1,3 @@
-temperature = temp > 15.0
+lowBound = temp > 5.0
 
-high = AG temperature
+low = AG lowBound
