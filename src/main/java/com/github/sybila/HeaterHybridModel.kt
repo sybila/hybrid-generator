@@ -176,7 +176,7 @@ class HeaterHybridModel(
 
         val result = HashStateMap(ff)
         for (state in 0 until stateCount) {
-            val stateIndex = hybridEncoder.coordinate(state, 1)
+            val stateIndex = hybridEncoder.coordinate(state, dimension)
             if ((gt && stateIndex > thresholdIndex) || (!gt && stateIndex <= thresholdIndex)) {
                 result[state] = tt
             }
