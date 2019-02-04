@@ -11,20 +11,20 @@ import com.github.sybila.ode.model.computeApproximation
 import java.io.FileInputStream
 
 /**
- * Represents heater hybrid model
+ * Represents parametrized heater hybrid model
  */
-class HeaterHybridModel(
-        solver: Solver<MutableSet<Rectangle>>
-) : Model<MutableSet<Rectangle>>, Solver<MutableSet<Rectangle>> by solver {
-    val onModel = Parser().parse(FileInputStream(".\\resources\\HeaterOnModel.bio")).computeApproximation(false, false)
-    val offModel = Parser().parse(FileInputStream(".\\resources\\HeaterOffModel.bio")).computeApproximation(false, false)
+class ParametrizedHeaterHybridModel(
+        solver: Solver<MutableSet<Rectangle>>)
+    : Model<MutableSet<Rectangle>>, Solver<MutableSet<Rectangle>> by solver {
+    val onModel = Parser().parse(FileInputStream(".\\resources\\ParametrizedHeaterOnModel.bio")).computeApproximation(false, false)
+    val offModel = Parser().parse(FileInputStream(".\\resources\\ParametrizedHeaterOffModel.bio")).computeApproximation(false, false)
     val onBoundsRect = onModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
     val offBoundsRect = offModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
     val hybridEncoder = HybridNodeEncoder(hashMapOf(Pair("on", HybridState("on", onModel, emptyList())), Pair("off", HybridState("off", offModel, emptyList()))))
     val onRectangleOdeModel = RectangleOdeModel(onModel)
     val offRectangleOdeModel = RectangleOdeModel(offModel)
-    val minTransitionTemp = 20
-    val maxTransitionTemp = 80
+    val minTransitionTemp = 5
+    val maxTransitionTemp = 15
 
     override val stateCount: Int
         get() = hybridEncoder.stateCount
@@ -36,12 +36,12 @@ class HeaterHybridModel(
         val model = hybridEncoder.decodeModel(this)
         if (model == "off") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            val timeCoordinate = hybridEncoder.coordinate(this, 1)
+            //val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
             if (tempVal >= maxTransitionTemp) {
-                val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate, timeCoordinate))
+                val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate))
                 return listOf(
-                        Transition(target, onModel.variables[1].name.increaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
+                        Transition(target, onModel.variables[0].name.decreaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
                 ).iterator()
             }
 
@@ -58,12 +58,12 @@ class HeaterHybridModel(
 
         if (model == "on") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            val timeCoordinate = hybridEncoder.coordinate(this, 1)
+            //val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
             if (tempVal <= minTransitionTemp) {
-                val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate, timeCoordinate))
+                val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate))
                 return listOf(
-                        Transition(target, onModel.variables[1].name.increaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
+                        Transition(target, onModel.variables[0].name.increaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
                 ).iterator()
             }
 
@@ -87,12 +87,12 @@ class HeaterHybridModel(
         val model = hybridEncoder.decodeModel(this)
         if (model == "off") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            val timeCoordinate = hybridEncoder.coordinate(this, 1)
+            //val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
             if (tempVal < minTransitionTemp) {
-                val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate, timeCoordinate))
+                val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate))
                 return listOf(
-                        Transition(target, onModel.variables[1].name.increaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
+                        Transition(target, onModel.variables[0].name.increaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
                 ).iterator()
             }
 
@@ -109,12 +109,12 @@ class HeaterHybridModel(
 
         if (model == "on") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            val timeCoordinate = hybridEncoder.coordinate(this, 1)
+            //val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
             if (tempVal > maxTransitionTemp) {
-                val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate, timeCoordinate))
+                val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate))
                 return listOf(
-                        Transition(target, onModel.variables[1].name.increaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
+                        Transition(target, onModel.variables[0].name.decreaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
                 ).iterator()
             }
 

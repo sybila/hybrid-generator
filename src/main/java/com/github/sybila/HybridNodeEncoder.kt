@@ -2,19 +2,22 @@ package com.github.sybila
 
 import com.github.sybila.ode.generator.NodeEncoder
 import com.github.sybila.ode.model.OdeModel
+import java.util.*
+import java.util.Collections.list
 import java.util.Collections.max
 import kotlin.collections.HashMap
 
 class HybridNodeEncoder(
-        models: HashMap<String, OdeModel>
+        models: Map<String, HybridState>
 ) {
     val modelEncoders = hashMapOf(
             *(models.map { entry ->
-                Pair(entry.key, NodeEncoder(entry.value))
+                Pair(entry.key, NodeEncoder(entry.value.odeModel))
             }.toTypedArray())
     )
     val statesPerModel = max(modelEncoders.map{ encoder -> encoder.value.stateCount})!!
     private val modelsOrder = listOf(*(models.keys.toTypedArray()))
+    private val variables = listOf(*(models.values.first().odeModel.variables.map{it.name}.toTypedArray()))
 
     val stateCount: Int = models.count() * statesPerModel
 
@@ -54,6 +57,28 @@ class HybridNodeEncoder(
 
     fun nodeInModel(node: Int): Int {
         return node % statesPerModel
+    }
+
+    fun getVariablesPositions(node: Int): Map<String, Int> {
+        val modelIndex = node / statesPerModel
+        val modelKey = this.modelsOrder[modelIndex]
+        val position = node % statesPerModel
+        val encoder = modelEncoders[modelKey]!!
+        val map = HashMap<String, Int>()
+        variables.forEachIndexed{i, v -> map[v] = encoder.coordinate(position, i)}
+        return map
+    }
+
+    fun shiftNodeToOtherStateWithOverridenVals(oldPosition: Int, newState: String, overridenVars: Map<String, Int>): Int {
+        val modelIndex = oldPosition / statesPerModel
+        val modelKey = this.modelsOrder[modelIndex]
+        val encoder = modelEncoders[modelKey]!!
+        val coordinates = encoder.decodeNode(oldPosition % statesPerModel)
+        for (ov in overridenVars.keys) {
+            val varIndex = variables.indexOf(ov)
+            coordinates[varIndex] = overridenVars[ov]!!
+        }
+        return encodeNode(newState, coordinates)
     }
 
 

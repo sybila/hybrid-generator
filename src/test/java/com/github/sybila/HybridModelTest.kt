@@ -7,24 +7,33 @@ import com.github.sybila.huctl.Formula
 import com.github.sybila.huctl.HUCTLParser
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleSolver
+import com.github.sybila.ode.model.Parser
+import com.github.sybila.ode.model.computeApproximation
+import java.io.FileInputStream
 import org.junit.Test
 import java.io.File
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-class HeaterHybridModelTest {
-    private val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 100.0)))
-    private val heater = HeaterHybridModel(solver)
-    private val heaterEncoder = heater.hybridEncoder
+class HybridModelTest {
+    private val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 100.0, 0.0, 100.0)))
+    private val onModel = Parser().parse(FileInputStream(".\\resources\\HeaterOnModel.bio")).computeApproximation(false, false)
+    private val offModel = Parser().parse(FileInputStream(".\\resources\\HeaterOffModel.bio")).computeApproximation(false, false)
+    private val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 80.0, false)))
+    private val offState = HybridState("off", offModel, listOf(ConstantHybridCondition(offModel.variables[0], 30.0, true)))
+    private val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 80.0, true), emptyMap(), emptyList())
+    private val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 30.0, false), emptyMap(), emptyList())
+
+    private val hybridModel = HybridModel(solver, listOf(onState, offState), listOf(transition1, transition2))
+    private val hybridEncoder = hybridModel.hybridEncoder
 
     @Test
     fun successor_jumpFromOnToOff_jumpsCorrectly() {
-        val thresholdTemp = heater.onModel.variables[0].thresholds.size - 2
-        val thresholdTempCoordinate = heaterEncoder.encodeNode("on", intArrayOf(thresholdTemp, 10))
-        with (heater) {
+        val thresholdTemp = onModel.variables[0].thresholds.size - 2
+        val thresholdTempCoordinate = hybridEncoder.encodeNode("on", intArrayOf(thresholdTemp, 10))
+        with (hybridModel) {
             val jump = thresholdTempCoordinate.successors(true).next()
-            val decodedTarget = heaterEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.decodeModel(jump.target)
             assertEquals("off", decodedTarget)
         }
     }
@@ -32,57 +41,43 @@ class HeaterHybridModelTest {
     @Test
     fun successor_jumpFromOffToOn_jumpsCorrectly() {
         val thresholdTemp = 1
-        val thresholdTempCoordinate = heaterEncoder.encodeNode("off", intArrayOf(thresholdTemp, 10))
-        with (heater) {
+        val thresholdTempCoordinate = hybridEncoder.encodeNode("off", intArrayOf(thresholdTemp, 10))
+        with (hybridModel) {
             val jump = thresholdTempCoordinate.successors(true).next()
-            val decodedTarget = heaterEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.decodeModel(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
 
     @Test
     fun successor_jumpFromOnToOn_jumpsCorrectly() {
-        val stableTemp = heater.onModel.variables[0].thresholds.size / 2
-        val stableTempCoordinates = heaterEncoder.encodeNode("on", intArrayOf(stableTemp, 2))
-        with (heater) {
+        val stableTemp = onModel.variables[0].thresholds.size / 2
+        val stableTempCoordinates = hybridEncoder.encodeNode("on", intArrayOf(stableTemp, 2))
+        with (hybridModel) {
             val jump = stableTempCoordinates.successors(true).next()
-            val decodedTarget = heaterEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.decodeModel(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
 
     @Test
     fun successor_jumpFromOffToOff_jumpsCorrectly() {
-        val stableTemp = heater.onModel.variables[0].thresholds.size / 2
-        val stableTempCoordinates = heaterEncoder.encodeNode("off", intArrayOf(stableTemp, 10))
-        with (heater) {
+        val stableTemp = onModel.variables[0].thresholds.size / 2
+        val stableTempCoordinates = hybridEncoder.encodeNode("off", intArrayOf(stableTemp, 10))
+        with (hybridModel) {
             val successors = stableTempCoordinates.successors(true)
             val jump = successors.next()
 
-            val decodedTarget = heaterEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.decodeModel(jump.target)
 
             assertEquals("off", decodedTarget)
         }
     }
 
-    @Test
-    fun hybridEncoder_idempotency() {
-        val onEncoder = heaterEncoder.modelEncoders["on"]
-        assertNotNull(onEncoder)
-        val node = onEncoder.encodeNode(intArrayOf(2, 5))
-
-        val hybridNode = heaterEncoder.encodeNode("on", intArrayOf(2, 5))
-        assertEquals(node + heaterEncoder.statesPerModel, hybridNode)
-
-        val decoded = heaterEncoder.decodeNode(hybridNode)
-        assertEquals("on", decoded.first)
-        assertEquals(2, decoded.second[0])
-        assertEquals(5, decoded.second[1])
-    }
 
     @Test
     fun checker_atom() {
-        Checker(heater).use { checker ->
+        Checker(hybridModel).use { checker ->
             val formula = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.LT, Expression.Constant(10.0))
             val r = checker.verify(formula)
             // [] = empty set
@@ -92,12 +87,13 @@ class HeaterHybridModelTest {
         }
     }
 
+    /**
     @Test
     fun checker_lowBound() {
         val f = File(".\\resources\\lowTemperatureBound.ctl")
         val x = HUCTLParser().parse(f, false)
 
-        Checker(heater).use { checker ->
+        Checker(hybridModel).use { checker ->
             val r = checker.verify(x["low"]!!)
             assertTrue(true)
         }
@@ -108,7 +104,7 @@ class HeaterHybridModelTest {
         val f = File(".\\resources\\highTemperatureBound.ctl")
         val x = HUCTLParser().parse(f, false)
 
-        Checker(heater).use { checker ->
+        Checker(hybridModel).use { checker ->
             val r = checker.verify(x["high"]!!)
             assertTrue(true)
         }
@@ -119,26 +115,20 @@ class HeaterHybridModelTest {
         val f = File(".\\resources\\highTemperatureBound2.ctl")
         val x = HUCTLParser().parse(f, false)
 
-        Checker(heater).use { checker ->
+        Checker(hybridModel).use { checker ->
             val r = checker.verify(x["high"]!!)
             assertTrue(true)
         }
     }
-
     @Test
     fun checker_parameterSynthesis() {
-        val s = RectangleSolver(Rectangle(doubleArrayOf(-2.0, 2.0)))
-        val f = File(".\\resources\\tempSynthesis.ctl")
+        val f = File(".\\resources\\lowTemperatureBound.ctl")
         val x = HUCTLParser().parse(f, false)
-        val parHeater = ParametrizedHeaterHybridModel(s)
+        val parHeater =  HeaterHybridModel(solver, true)
 
         Checker(parHeater).use { checker ->
-            val r = checker.verify(x["synt"]!!)
-            r.listIterator().next().entries().forEach {
-                val decoded =  parHeater.hybridEncoder.decodeNode(it.first)
-                println("State "+decoded.first+"; temp: "+decoded.second.first().toString()+": "+it.second.asSequence().first().toString())
-            }
+            val r = checker.verify(x["low"]!!)
             assertTrue(true)
         }
-    }
+    }*/
 }

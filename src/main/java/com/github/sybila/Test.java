@@ -31,7 +31,7 @@ public class Test {
         int[] coords = encoder.decodeNode(10);
         int state = encoder.encodeVertex(coords);
 
-        HeaterHybridModel hybrid = new HeaterHybridModel(solver, false);
+        HeaterHybridModel hybrid = new HeaterHybridModel(solver);
 
         SequentialChecker<Set<Rectangle>> checker = new SequentialChecker<>(hybrid);
 
