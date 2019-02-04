@@ -81,6 +81,44 @@ class HeaterHybridModelTest {
     }
 
     @Test
+    fun float_eval_GT() {
+        val s = RectangleSolver(Rectangle(doubleArrayOf(-2.0, 2.0)))
+        val parHeater = ParametrizedHeaterHybridModel(s)
+        val condition = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.GT, Expression.Constant(10.0))
+
+        with (parHeater) {
+            val resultTemperatures = condition.eval().entries().asSequence().map{parHeater.hybridEncoder.coordinate(it.first,0)}
+            resultTemperatures.forEach { assertTrue { it > 10 } }
+        }
+    }
+
+    @Test
+    fun float_eval_LE() {
+        val s = RectangleSolver(Rectangle(doubleArrayOf(-2.0, 2.0)))
+        val parHeater = ParametrizedHeaterHybridModel(s)
+        val condition = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.LE, Expression.Constant(10.0))
+
+        with (parHeater) {
+            val resultTemperatures = condition.eval().entries().asSequence().map{parHeater.hybridEncoder.coordinate(it.first,0)}
+            resultTemperatures.forEach { assertTrue { it <= 10 } }
+        }
+    }
+
+    @Test
+    fun float_eval_LeAndGtMakeCompleteSet() {
+        val s = RectangleSolver(Rectangle(doubleArrayOf(-2.0, 2.0)))
+        val parHeater = ParametrizedHeaterHybridModel(s)
+        val condition1 = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.LE, Expression.Constant(10.0))
+        val condition2 = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.GT, Expression.Constant(10.0))
+
+        with (parHeater) {
+            val le = condition1.eval()
+            val gt = condition2.eval()
+            assertEquals(parHeater.stateCount, le.sizeHint + gt.sizeHint)
+        }
+    }
+
+    @Test
     fun checker_atom() {
         Checker(heater).use { checker ->
             val formula = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.LT, Expression.Constant(10.0))
