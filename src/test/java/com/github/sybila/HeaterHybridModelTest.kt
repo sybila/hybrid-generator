@@ -10,6 +10,7 @@ import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleSolver
 import org.junit.Test
 import java.io.File
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -121,7 +122,7 @@ class HeaterHybridModelTest {
 
     @Test
     fun checker_atom() {
-        Checker(heater).use { checker ->
+        SequentialChecker(heater).use { checker ->
             val formula = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.LT, Expression.Constant(10.0))
             val r = checker.verify(formula)
             // [] = empty set
@@ -136,7 +137,7 @@ class HeaterHybridModelTest {
         val f = File("resources", "lowTemperatureBound.ctl")
         val x = HUCTLParser().parse(f, false)
 
-        Checker(heater).use { checker ->
+        SequentialChecker(heater).use { checker ->
             val r = checker.verify(x["low"]!!)
             assertTrue(true)
         }
@@ -147,7 +148,7 @@ class HeaterHybridModelTest {
         val f = File("resources", "highTemperatureBound.ctl")
         val x = HUCTLParser().parse(f, false)
 
-        Checker(heater).use { checker ->
+        SequentialChecker(heater).use { checker ->
             val r = checker.verify(x["high"]!!)
             assertTrue(true)
         }
@@ -171,11 +172,11 @@ class HeaterHybridModelTest {
         val x = HUCTLParser().parse(f, false)
         val parHeater = ParametrizedHeaterHybridModel(s)
 
-        Checker(parHeater).use { checker ->
+        SequentialChecker(parHeater).use { checker ->
             val r = checker.verify(x.getValue("synt"))
-            r.listIterator().next().entries().forEach {
-                val decoded =  parHeater.hybridEncoder.decodeNode(it.first)
-                println("State "+decoded.first+"; temp: "+decoded.second.first().toString()+": "+it.second.asSequence().first().toString())
+            r.entries().forEach { (state, params) ->
+                val decoded =  parHeater.hybridEncoder.decodeNode(state)
+                println("State ${decoded.first}; temp: ${decoded.second[0]}: ${params.first()}")
             }
             assertTrue(true)
         }
