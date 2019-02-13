@@ -1,3 +1,3 @@
-highBound = temp < 17
+lowBound = temp > 2
 
-synt = AG highBound
+synt = AG lowBound

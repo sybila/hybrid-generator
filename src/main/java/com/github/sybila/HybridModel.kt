@@ -41,7 +41,38 @@ class HybridModel(
         if (!timeFlow)
             return this.successors(true)
 
-        TODO()
+        val modelPredecessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
+
+        val currentStateName = hybridEncoder.decodeModel(this)
+        val currentState = statesMap[currentStateName]!!
+        // inquire jumps from other states
+        val relevantJumps = transitions.filter{it.to == currentStateName}
+        val varValuation = hybridEncoder.getVariablesPositions(this)
+
+        for (jump in relevantJumps) {
+            if (jump.newPositions.any{varValuation[it.key] != it.value})
+                // some variable does not fulfill initial valuation after the jump
+                continue
+
+            for (node in hybridEncoder.getNodesOfModel(jump.from)) {
+                if (jump.condition.eval(hybridEncoder.getVariablesPositions(node)))
+                    modelPredecessors.add(Transition(node, DirectionFormula.Atom.Proposition("x", Facet.POSITIVE), mutableSetOf(Rectangle(doubleArrayOf()))))
+            }
+        }
+
+        val valInModel = hybridEncoder.nodeInModel(this)
+        val localPredecessors: Iterator<Transition<MutableSet<Rectangle>>>
+        with (currentState.rectangleOdeModel) {
+            localPredecessors = valInModel.predecessors(true)
+        }
+
+        modelPredecessors.addAll(localPredecessors.asSequence().map {
+            Transition(hybridEncoder.nodeInHybrid(currentStateName, it.target), it.direction, it.bound)
+        })
+
+        return modelPredecessors.iterator()
+
+
     }
 
     override fun Int.successors(timeFlow: Boolean): Iterator<Transition<MutableSet<Rectangle>>> {

@@ -69,6 +69,13 @@ class HybridNodeEncoder(
         return map
     }
 
+    fun getNodesOfModel(modelKey: String): IntRange {
+        val modelIndex = this.modelsOrder.indexOf(modelKey)
+        val beginning =  modelIndex * statesPerModel
+        val end = beginning + statesPerModel
+        return beginning until end
+    }
+
     fun shiftNodeToOtherStateWithOverridenVals(oldPosition: Int, newState: String, overridenVars: Map<String, Int>): Int {
         val modelIndex = oldPosition / statesPerModel
         val modelKey = this.modelsOrder[modelIndex]

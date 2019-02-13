@@ -4,6 +4,7 @@ import com.github.sybila.checker.Checker
 import com.github.sybila.huctl.CompareOp
 import com.github.sybila.huctl.Expression
 import com.github.sybila.huctl.Formula
+import com.github.sybila.huctl.HUCTLParser
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleSolver
 import com.github.sybila.ode.model.Parser
@@ -14,7 +15,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class HybridModelTest {
-    private val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 100.0, 0.0, 100.0)))
+    private val solver = RectangleSolver(Rectangle(doubleArrayOf()))
     private val onModel = Parser().parse(File("resources", "HeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
     private val offModel = Parser().parse(File("resources", "HeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
     private val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 80.0, false)))
@@ -85,10 +86,10 @@ class HybridModelTest {
         }
     }
 
-    /**
+
     @Test
     fun checker_lowBound() {
-        val f = File(".\\resources\\lowTemperatureBound.ctl")
+        val f = File("resources", "lowTemperatureBound.ctl")
         val x = HUCTLParser().parse(f, false)
 
         Checker(hybridModel).use { checker ->
@@ -99,7 +100,7 @@ class HybridModelTest {
 
     @Test
     fun checker_highBound() {
-        val f = File(".\\resources\\highTemperatureBound.ctl")
+        val f = File("resources", "highTemperatureBound.ctl")
         val x = HUCTLParser().parse(f, false)
 
         Checker(hybridModel).use { checker ->
@@ -110,7 +111,7 @@ class HybridModelTest {
 
     @Test
     fun checker_highBound2() {
-        val f = File(".\\resources\\highTemperatureBound2.ctl")
+        val f = File("resources", "highTemperatureBound2.ctl")
         val x = HUCTLParser().parse(f, false)
 
         Checker(hybridModel).use { checker ->
@@ -118,11 +119,12 @@ class HybridModelTest {
             assertTrue(true)
         }
     }
+    /**
     @Test
     fun checker_parameterSynthesis() {
-        val f = File(".\\resources\\lowTemperatureBound.ctl")
+        val f = File("resources", "lowTemperatureBound.ctl")
         val x = HUCTLParser().parse(f, false)
-        val parHeater =  HeaterHybridModel(solver, true)
+        val parHeater =  HeaterHybridModel(solver)
 
         Checker(parHeater).use { checker ->
             val r = checker.verify(x["low"]!!)
