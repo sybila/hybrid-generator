@@ -4,12 +4,10 @@ import com.github.sybila.checker.Checker
 import com.github.sybila.huctl.CompareOp
 import com.github.sybila.huctl.Expression
 import com.github.sybila.huctl.Formula
-import com.github.sybila.huctl.HUCTLParser
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleSolver
 import com.github.sybila.ode.model.Parser
 import com.github.sybila.ode.model.computeApproximation
-import java.io.FileInputStream
 import org.junit.Test
 import java.io.File
 import kotlin.test.assertEquals
@@ -17,8 +15,8 @@ import kotlin.test.assertTrue
 
 class HybridModelTest {
     private val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 100.0, 0.0, 100.0)))
-    private val onModel = Parser().parse(FileInputStream(".\\resources\\HeaterOnModel.bio")).computeApproximation(false, false)
-    private val offModel = Parser().parse(FileInputStream(".\\resources\\HeaterOffModel.bio")).computeApproximation(false, false)
+    private val onModel = Parser().parse(File("resources", "HeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
+    private val offModel = Parser().parse(File("resources", "HeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
     private val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 80.0, false)))
     private val offState = HybridState("off", offModel, listOf(ConstantHybridCondition(offModel.variables[0], 30.0, true)))
     private val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 80.0, true), emptyMap(), emptyList())

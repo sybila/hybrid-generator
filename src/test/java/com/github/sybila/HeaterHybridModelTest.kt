@@ -1,6 +1,7 @@
 package com.github.sybila
 
 import com.github.sybila.checker.Checker
+import com.github.sybila.checker.SequentialChecker
 import com.github.sybila.huctl.CompareOp
 import com.github.sybila.huctl.Expression
 import com.github.sybila.huctl.Formula
@@ -14,7 +15,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class HeaterHybridModelTest {
-    private val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 100.0)))
+    private val solver = RectangleSolver(Rectangle(doubleArrayOf(/*0.0, 100.0*/)))
     private val heater = HeaterHybridModel(solver)
     private val heaterEncoder = heater.hybridEncoder
 
@@ -132,7 +133,7 @@ class HeaterHybridModelTest {
 
     @Test
     fun checker_lowBound() {
-        val f = File(".\\resources\\lowTemperatureBound.ctl")
+        val f = File("resources", "lowTemperatureBound.ctl")
         val x = HUCTLParser().parse(f, false)
 
         Checker(heater).use { checker ->
@@ -143,7 +144,7 @@ class HeaterHybridModelTest {
 
     @Test
     fun checker_highBound() {
-        val f = File(".\\resources\\highTemperatureBound.ctl")
+        val f = File("resources", "highTemperatureBound.ctl")
         val x = HUCTLParser().parse(f, false)
 
         Checker(heater).use { checker ->
@@ -154,11 +155,11 @@ class HeaterHybridModelTest {
 
     @Test
     fun checker_highBound2() {
-        val f = File(".\\resources\\highTemperatureBound2.ctl")
+        val f = File("resources", "highTemperatureBound2.ctl")
         val x = HUCTLParser().parse(f, false)
 
-        Checker(heater).use { checker ->
-            val r = checker.verify(x["high"]!!)
+        SequentialChecker(heater).use { checker ->
+            val r = checker.verify(x.getValue("high"))
             assertTrue(true)
         }
     }
@@ -166,12 +167,12 @@ class HeaterHybridModelTest {
     @Test
     fun checker_parameterSynthesis() {
         val s = RectangleSolver(Rectangle(doubleArrayOf(-2.0, 2.0)))
-        val f = File(".\\resources\\tempSynthesis.ctl")
+        val f = File("resources", "tempSynthesis.ctl")
         val x = HUCTLParser().parse(f, false)
         val parHeater = ParametrizedHeaterHybridModel(s)
 
         Checker(parHeater).use { checker ->
-            val r = checker.verify(x["synt"]!!)
+            val r = checker.verify(x.getValue("synt"))
             r.listIterator().next().entries().forEach {
                 val decoded =  parHeater.hybridEncoder.decodeNode(it.first)
                 println("State "+decoded.first+"; temp: "+decoded.second.first().toString()+": "+it.second.asSequence().first().toString())

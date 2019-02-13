@@ -8,6 +8,7 @@ import com.github.sybila.ode.generator.rect.RectangleOdeModel
 import com.github.sybila.ode.model.OdeModel
 import com.github.sybila.ode.model.Parser
 import com.github.sybila.ode.model.computeApproximation
+import java.io.File
 import java.io.FileInputStream
 
 /**
@@ -16,8 +17,8 @@ import java.io.FileInputStream
 class HeaterHybridModel(
         solver: Solver<MutableSet<Rectangle>>
 ) : Model<MutableSet<Rectangle>>, Solver<MutableSet<Rectangle>> by solver {
-    val onModel = Parser().parse(FileInputStream(".\\resources\\HeaterOnModel.bio")).computeApproximation(false, false)
-    val offModel = Parser().parse(FileInputStream(".\\resources\\HeaterOffModel.bio")).computeApproximation(false, false)
+    val onModel = Parser().parse(File("resources", "HeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
+    val offModel = Parser().parse(File("resources", "HeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
     val onBoundsRect = onModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
     val offBoundsRect = offModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
     val hybridEncoder = HybridNodeEncoder(hashMapOf(Pair("on", HybridState("on", onModel, emptyList())), Pair("off", HybridState("off", offModel, emptyList()))))

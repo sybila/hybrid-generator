@@ -2,13 +2,14 @@ package com.github.sybila
 
 import com.github.sybila.checker.*
 import com.github.sybila.checker.map.mutable.HashStateMap
-import com.github.sybila.huctl.*
+import com.github.sybila.huctl.CompareOp
+import com.github.sybila.huctl.Expression
+import com.github.sybila.huctl.Formula
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleOdeModel
-import com.github.sybila.ode.model.OdeModel
 import com.github.sybila.ode.model.Parser
 import com.github.sybila.ode.model.computeApproximation
-import java.io.FileInputStream
+import java.io.File
 
 /**
  * Represents parametrized heater hybrid model
@@ -16,8 +17,8 @@ import java.io.FileInputStream
 class ParametrizedHeaterHybridModel(
         solver: Solver<MutableSet<Rectangle>>)
     : Model<MutableSet<Rectangle>>, Solver<MutableSet<Rectangle>> by solver {
-    val onModel = Parser().parse(FileInputStream(".\\resources\\ParametrizedHeaterOnModel.bio")).computeApproximation(false, false)
-    val offModel = Parser().parse(FileInputStream(".\\resources\\ParametrizedHeaterOffModel.bio")).computeApproximation(false, false)
+    val onModel = Parser().parse(File("resources", "ParametrizedHeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
+    val offModel = Parser().parse(File("resources", "ParametrizedHeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
     val onBoundsRect = onModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
     val offBoundsRect = offModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
     val hybridEncoder = HybridNodeEncoder(hashMapOf(Pair("on", HybridState("on", onModel, emptyList())), Pair("off", HybridState("off", offModel, emptyList()))))
