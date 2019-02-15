@@ -1,6 +1,7 @@
 package com.github.sybila
 
 import com.github.sybila.checker.Checker
+import com.github.sybila.checker.SequentialChecker
 import com.github.sybila.huctl.CompareOp
 import com.github.sybila.huctl.Expression
 import com.github.sybila.huctl.Formula
@@ -64,14 +65,56 @@ class HybridModelTest {
         val stableTemp = onModel.variables[0].thresholds.size / 2
         val stableTempCoordinates = hybridEncoder.encodeNode("off", intArrayOf(stableTemp, 10))
         with (hybridModel) {
-            val successors = stableTempCoordinates.successors(true)
-            val jump = successors.next()
-
+            val jump = stableTempCoordinates.successors(true).next()
             val decodedTarget = hybridEncoder.decodeModel(jump.target)
-
             assertEquals("off", decodedTarget)
         }
     }
+
+    @Test
+    fun predecessor_jumpFromOnToOff_jumpsCorrectly() {
+        val thresholdTemp = 2
+        val thresholdTempCoordinate = hybridEncoder.encodeNode("on", intArrayOf(thresholdTemp, 10))
+        with (hybridModel) {
+            val jump = thresholdTempCoordinate.predecessors(true).next()
+            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            assertEquals("off", decodedTarget)
+        }
+    }
+
+    @Test
+    fun predecessor_jumpFromOffToOn_jumpsCorrectly() {
+        val thresholdTemp = onModel.variables[0].thresholds.size - 2
+        val thresholdTempCoordinate = hybridEncoder.encodeNode("off", intArrayOf(thresholdTemp, 10))
+        with (hybridModel) {
+            val jump = thresholdTempCoordinate.predecessors(true).next()
+            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            assertEquals("on", decodedTarget)
+        }
+    }
+
+    @Test
+    fun predecessor_jumpFromOnToOn_jumpsCorrectly() {
+        val stableTemp = onModel.variables[0].thresholds.size / 2
+        val stableTempCoordinates = hybridEncoder.encodeNode("on", intArrayOf(stableTemp, 2))
+        with (hybridModel) {
+            val jump = stableTempCoordinates.predecessors(true).next()
+            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            assertEquals("on", decodedTarget)
+        }
+    }
+
+    @Test
+    fun predecessor_jumpFromOffToOff_jumpsCorrectly() {
+        val stableTemp = onModel.variables[0].thresholds.size / 2
+        val stableTempCoordinates = hybridEncoder.encodeNode("off", intArrayOf(stableTemp, 10))
+        with (hybridModel) {
+            val jump = stableTempCoordinates.predecessors(true).next()
+            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            assertEquals("off", decodedTarget)
+        }
+    }
+
 
 
     @Test
@@ -119,16 +162,26 @@ class HybridModelTest {
             assertTrue(true)
         }
     }
-    /**
+
     @Test
     fun checker_parameterSynthesis() {
-        val f = File("resources", "lowTemperatureBound.ctl")
+        val f = File("resources", "tempSynthesis.ctl")
         val x = HUCTLParser().parse(f, false)
-        val parHeater =  HeaterHybridModel(solver)
-
-        Checker(parHeater).use { checker ->
-            val r = checker.verify(x["low"]!!)
+        val solver = RectangleSolver(Rectangle(doubleArrayOf(-2.0, 2.0)))
+        val onModel = Parser().parse(File("resources", "ParametrizedHeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
+        val offModel = Parser().parse(File("resources", "ParametrizedHeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
+        val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 18.0, false)))
+        val offState = HybridState("off", offModel, listOf(ConstantHybridCondition(offModel.variables[0], 3.0, true)))
+        val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 18.0, true), emptyMap(), emptyList())
+        val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 3.0, false), emptyMap(), emptyList())
+        val hybridModel = HybridModel(solver, listOf(onState, offState), listOf(transition1, transition2))
+        SequentialChecker(hybridModel).use { checker ->
+            val r = checker.verify(x.getValue("synt"))
+            r.entries().forEach { (state, params) ->
+                val decoded = hybridModel.hybridEncoder.decodeNode(state)
+                println("State ${decoded.first}; temp: ${decoded.second[0]}: ${params.first()}")
+            }
             assertTrue(true)
         }
-    }*/
+    }
 }

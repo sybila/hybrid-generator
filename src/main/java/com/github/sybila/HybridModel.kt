@@ -54,16 +54,26 @@ class HybridModel(
                 // some variable does not fulfill initial valuation after the jump
                 continue
 
+            val staticVariables = variables.map{it.name}.toSet().minus(jump.newPositions.keys)
             for (node in hybridEncoder.getNodesOfModel(jump.from)) {
-                if (jump.condition.eval(hybridEncoder.getVariablesPositions(node)))
-                    modelPredecessors.add(Transition(node, DirectionFormula.Atom.Proposition("x", Facet.POSITIVE), mutableSetOf(Rectangle(doubleArrayOf()))))
+                val predecessorValuation = hybridEncoder.getVariablesPositions(node)
+                if (staticVariables.all{varValuation[it] == predecessorValuation[it]} && jump.condition.eval(predecessorValuation)) {
+                    val bounds = mutableSetOf(Rectangle(statesMap[jump.from]!!.odeModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()))
+                    modelPredecessors.add(Transition(node, DirectionFormula.Atom.Proposition("x", Facet.POSITIVE), bounds))
+                }
             }
         }
 
         val valInModel = hybridEncoder.nodeInModel(this)
-        val localPredecessors: Iterator<Transition<MutableSet<Rectangle>>>
+        val localPredecessors: Sequence<Transition<MutableSet<Rectangle>>>
         with (currentState.rectangleOdeModel) {
-            localPredecessors = valInModel.predecessors(true)
+            localPredecessors = valInModel
+                    .predecessors(true)
+                    .asSequence()
+                    .filter{ transition ->
+                        currentState.invariantConditions.all { it.eval(hybridEncoder.getVariablesPositions(transition.target))                        }
+                    }
+                    .map{Transition(hybridEncoder.nodeInHybrid(currentStateName, it.target), it.direction, it.bound)}
         }
 
         modelPredecessors.addAll(localPredecessors.asSequence().map {
@@ -89,21 +99,25 @@ class HybridModel(
         for (jump in relevantJumps) {
             if (jump.condition.eval(varValuation)) {
                 val target = hybridEncoder.shiftNodeToOtherStateWithOverridenVals(this, jump.to, jump.newPositions)
-                // TODO what to do with proposition and BoundsRectangle
-                modelSuccessors.add(Transition(target, DirectionFormula.Atom.Proposition("x", Facet.POSITIVE), mutableSetOf(Rectangle(doubleArrayOf()))))
+                // TODO what to do with proposition
+                val bounds = mutableSetOf(Rectangle(statesMap[jump.to]!!.odeModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()))
+                modelSuccessors.add(Transition(target, DirectionFormula.Atom.Proposition("x", Facet.POSITIVE), bounds))
             }
         }
 
         val valInModel = hybridEncoder.nodeInModel(this)
-        val localSuccessors: Iterator<Transition<MutableSet<Rectangle>>>
+        val localSuccessors: Sequence<Transition<MutableSet<Rectangle>>>
         with (currentState.rectangleOdeModel) {
-                localSuccessors = valInModel.successors(true)
+            localSuccessors = valInModel
+                    .successors(true)
+                    .asSequence()
+                    .filter{ transition ->
+                            currentState.invariantConditions.all { it.eval(hybridEncoder.getVariablesPositions(transition.target))                        }
+                    }
+                    .map{Transition(hybridEncoder.nodeInHybrid(currentStateName, it.target), it.direction, it.bound)}
         }
 
-        modelSuccessors.addAll(localSuccessors.asSequence().map {
-            Transition(hybridEncoder.nodeInHybrid(currentStateName, it.target), it.direction, it.bound)
-        })
-
+        modelSuccessors.addAll(localSuccessors)
         return modelSuccessors.iterator()
     }
 
