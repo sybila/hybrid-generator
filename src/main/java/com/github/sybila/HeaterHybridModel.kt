@@ -2,14 +2,14 @@ package com.github.sybila
 
 import com.github.sybila.checker.*
 import com.github.sybila.checker.map.mutable.HashStateMap
-import com.github.sybila.huctl.*
+import com.github.sybila.huctl.CompareOp
+import com.github.sybila.huctl.Expression
+import com.github.sybila.huctl.Formula
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleOdeModel
-import com.github.sybila.ode.model.OdeModel
 import com.github.sybila.ode.model.Parser
 import com.github.sybila.ode.model.computeApproximation
 import java.io.File
-import java.io.FileInputStream
 
 /**
  * Represents heater hybrid model
@@ -34,15 +34,15 @@ class HeaterHybridModel(
         if (!timeFlow)
             return this.successors(true)
 
+        val predecessors = ArrayList<Transition<MutableSet<Rectangle>>>()
         val model = hybridEncoder.decodeModel(this)
         if (model == "off") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
             if (tempVal >= maxTransitionTemp) {
-                val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate, timeCoordinate))
+                val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate))
                 return listOf(
-                        Transition(target, onModel.variables[1].name.increaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
+                        Transition(target, onModel.variables[0].name.increaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
                 ).iterator()
             }
 
@@ -59,12 +59,11 @@ class HeaterHybridModel(
 
         if (model == "on") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
             if (tempVal <= minTransitionTemp) {
-                val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate, timeCoordinate))
+                val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate))
                 return listOf(
-                        Transition(target, onModel.variables[1].name.increaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
+                        Transition(target, onModel.variables[0].name.increaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
                 ).iterator()
             }
 
@@ -88,12 +87,11 @@ class HeaterHybridModel(
         val model = hybridEncoder.decodeModel(this)
         if (model == "off") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
             if (tempVal < minTransitionTemp) {
-                val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate, timeCoordinate))
+                val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate))
                 return listOf(
-                        Transition(target, onModel.variables[1].name.increaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
+                        Transition(target, onModel.variables[0].name.increaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
                 ).iterator()
             }
 
@@ -110,12 +108,11 @@ class HeaterHybridModel(
 
         if (model == "on") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
             if (tempVal > maxTransitionTemp) {
-                val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate, timeCoordinate))
+                val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate))
                 return listOf(
-                        Transition(target, onModel.variables[1].name.increaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
+                        Transition(target, onModel.variables[0].name.increaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
                 ).iterator()
             }
 

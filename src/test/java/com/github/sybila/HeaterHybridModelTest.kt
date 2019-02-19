@@ -11,6 +11,7 @@ import com.github.sybila.ode.generator.rect.RectangleSolver
 import org.junit.Test
 import java.io.File
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -64,6 +65,44 @@ class HeaterHybridModelTest {
             val decodedTarget = heaterEncoder.decodeModel(jump.target)
 
             assertEquals("off", decodedTarget)
+        }
+    }
+
+    private fun Int.stateString(encoder: HybridNodeEncoder): String {
+        val (mode, coords) = encoder.decodeNode(this)
+        return "$this:$mode:${Arrays.toString(coords)}"
+    }
+
+    @Test
+    fun successor_consistency() {
+        with(heater) {
+            val successorGraph = ArrayList<Pair<Int, Int>>()
+            val predecessorGraph = ArrayList<Pair<Int, Int>>()
+
+            for (s in 0 until stateCount) {
+                println("Successors: State ${s.stateString(hybridEncoder)} goes to ${s.successors(true).asSequence().toList()}")
+                println("Predecessors: State ${s.stateString(hybridEncoder)} comes from ${s.predecessors(true).asSequence().toList()}")
+                s.successors(true).forEach {
+                    successorGraph.add(s to it.target)
+                }
+                s.predecessors(true).forEach {
+                    predecessorGraph.add(it.target to s)
+                }
+            }
+
+            for (pair in successorGraph) {
+                assertTrue("Edge (${pair.first.stateString(hybridEncoder)},${pair.second.stateString(hybridEncoder)}) present in successors, but not in predecessors") {
+                    pair in predecessorGraph
+                }
+            }
+
+            for (pair in predecessorGraph) {
+                assertTrue("Edge (${pair.first.stateString(hybridEncoder)},${pair.second.stateString(hybridEncoder)}) present in predecessors, but not in successors") {
+                    pair in successorGraph
+                }
+            }
+
+            assertEquals(successorGraph.toSet(), predecessorGraph.toSet())
         }
     }
 
@@ -172,8 +211,16 @@ class HeaterHybridModelTest {
         val x = HUCTLParser().parse(f, false)
         val parHeater = ParametrizedHeaterHybridModel(s)
 
+        with(parHeater) {
+            for (s in 0 until stateCount) {
+                val (mode, state) = hybridEncoder.decodeNode(s)
+                println("State $s:$mode:${Arrays.toString(state)} goes to ${s.successors(true).asSequence().toList()}")
+                println("State $s:$mode:${Arrays.toString(state)} comes from ${s.predecessors(true).asSequence().toList()}")
+            }
+        }
+
         SequentialChecker(parHeater).use { checker ->
-            val r = checker.verify(x.getValue("synt"))
+            val r = checker.verify(HUCTLParser().formula("EX !(temp > 2)")/*x.getValue("synt")*/)
             r.entries().forEach { (state, params) ->
                 val decoded =  parHeater.hybridEncoder.decodeNode(state)
                 println("State ${decoded.first}; temp: ${decoded.second[0]}: ${params.first()}")
