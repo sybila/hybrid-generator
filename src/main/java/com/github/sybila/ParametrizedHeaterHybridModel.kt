@@ -15,8 +15,8 @@ import java.io.File
  * Represents parametrized heater hybrid model
  */
 class ParametrizedHeaterHybridModel(
-        solver: Solver<MutableSet<Rectangle>>)
-    : Model<MutableSet<Rectangle>>, Solver<MutableSet<Rectangle>> by solver {
+        solver: Solver<MutableSet<Rectangle>>
+) : Model<MutableSet<Rectangle>>, Solver<MutableSet<Rectangle>> by solver {
     val onModel = Parser().parse(File("resources", "ParametrizedHeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
     val offModel = Parser().parse(File("resources", "ParametrizedHeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
     val onBoundsRect = onModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
@@ -35,15 +35,15 @@ class ParametrizedHeaterHybridModel(
             return this.successors(true)
 
         val model = hybridEncoder.decodeModel(this)
+        val predecessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
         if (model == "off") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            //val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
-            if (tempVal >= maxTransitionTemp) {
+            if (tempVal > maxTransitionTemp) {
                 val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate))
-                return listOf(
-                        Transition(target, onModel.variables[0].name.decreaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
-                ).iterator()
+                predecessors.add(
+                        Transition(target, onModel.variables[0].name.increaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
+                )
             }
 
             val valInModel = hybridEncoder.nodeInModel(this)
@@ -52,20 +52,20 @@ class ParametrizedHeaterHybridModel(
                 modelSuccessors = valInModel.predecessors(true)
             }
 
-            return modelSuccessors.asSequence().map {
+            predecessors.addAll(modelSuccessors.asSequence().map {
                 Transition(hybridEncoder.nodeInHybrid("off", it.target), it.direction, it.bound)
-            }.iterator()
+            })
+            return predecessors.iterator()
         }
 
         if (model == "on") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            //val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
-            if (tempVal <= minTransitionTemp) {
+            if (tempVal < minTransitionTemp) {
                 val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate))
-                return listOf(
+                predecessors.add(
                         Transition(target, onModel.variables[0].name.increaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
-                ).iterator()
+                )
             }
 
             val valInModel = hybridEncoder.nodeInModel(this)
@@ -73,9 +73,10 @@ class ParametrizedHeaterHybridModel(
             with (onRectangleOdeModel) {
                 modelSuccessors = valInModel.predecessors(true)
             }
-            return modelSuccessors.asSequence().map {
+            predecessors.addAll(modelSuccessors.asSequence().map {
                 Transition(hybridEncoder.nodeInHybrid("on", it.target), it.direction, it.bound)
-            }.iterator()
+            })
+            return predecessors.iterator()
         }
 
         throw IllegalArgumentException("State out of bounds")
@@ -85,16 +86,16 @@ class ParametrizedHeaterHybridModel(
         if (!timeFlow)
             return this.predecessors(true)
 
+        val successors = mutableListOf<Transition<MutableSet<Rectangle>>>()
         val model = hybridEncoder.decodeModel(this)
         if (model == "off") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            //val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
             if (tempVal < minTransitionTemp) {
                 val target = hybridEncoder.encodeNode("on", intArrayOf(tempCoordinate))
-                return listOf(
+                successors.add(
                         Transition(target, onModel.variables[0].name.increaseProp(), mutableSetOf(Rectangle(onBoundsRect)))
-                ).iterator()
+                )
             }
 
             val valInModel = hybridEncoder.nodeInModel(this)
@@ -103,20 +104,20 @@ class ParametrizedHeaterHybridModel(
                 modelSuccessors = valInModel.successors(true)
             }
 
-            return modelSuccessors.asSequence().map {
+            successors.addAll(modelSuccessors.asSequence().map {
                 Transition(hybridEncoder.nodeInHybrid("off", it.target), it.direction, it.bound)
-            }.iterator()
+            })
+            return successors.iterator()
         }
 
         if (model == "on") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
-            //val timeCoordinate = hybridEncoder.coordinate(this, 1)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
             if (tempVal > maxTransitionTemp) {
                 val target = hybridEncoder.encodeNode("off", intArrayOf(tempCoordinate))
-                return listOf(
-                        Transition(target, onModel.variables[0].name.decreaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
-                ).iterator()
+                successors.add(
+                        Transition(target, onModel.variables[0].name.increaseProp(), mutableSetOf(Rectangle(offBoundsRect)))
+                )
             }
 
             val valInModel = hybridEncoder.nodeInModel(this)
@@ -124,9 +125,10 @@ class ParametrizedHeaterHybridModel(
             with (onRectangleOdeModel) {
                 modelSuccessors = valInModel.successors(true)
             }
-            return modelSuccessors.asSequence().map {
+            successors.addAll(modelSuccessors.asSequence().map {
                 Transition(hybridEncoder.nodeInHybrid("on", it.target), it.direction, it.bound)
-            }.iterator()
+            })
+            return successors.iterator()
         }
 
         throw IllegalArgumentException("State out of bounds")

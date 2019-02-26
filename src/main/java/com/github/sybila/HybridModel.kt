@@ -42,9 +42,12 @@ class HybridModel(
             return this.successors(true)
 
         val modelPredecessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
-
         val currentStateName = hybridEncoder.decodeModel(this)
         val currentState = statesMap[currentStateName]!!
+
+        if (!currentState.invariantConditions.all { it.eval(hybridEncoder.getVariablesPositions(this))})
+            return modelPredecessors.iterator()
+
         // inquire jumps from other states
         val relevantJumps = transitions.filter{it.to == currentStateName}
         val varValuation = hybridEncoder.getVariablesPositions(this)
@@ -57,7 +60,10 @@ class HybridModel(
             val staticVariables = variables.map{it.name}.toSet().minus(jump.newPositions.keys)
             for (node in hybridEncoder.getNodesOfModel(jump.from)) {
                 val predecessorValuation = hybridEncoder.getVariablesPositions(node)
-                if (staticVariables.all{varValuation[it] == predecessorValuation[it]} && jump.condition.eval(predecessorValuation)) {
+                val predecessorState = statesMap[hybridEncoder.decodeModel(node)]!!
+                if (staticVariables.all{varValuation[it] == predecessorValuation[it]}
+                        && jump.condition.eval(predecessorValuation)
+                        && predecessorState.invariantConditions.all { it.eval(predecessorValuation) }) {
                     val bounds = mutableSetOf(Rectangle(statesMap[jump.from]!!.odeModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()))
                     modelPredecessors.add(Transition(node, DirectionFormula.Atom.Proposition("x", Facet.POSITIVE), bounds))
                 }
@@ -71,27 +77,25 @@ class HybridModel(
                     .predecessors(true)
                     .asSequence()
                     .filter{ transition ->
-                        currentState.invariantConditions.all { it.eval(hybridEncoder.getVariablesPositions(transition.target))                        }
+                        currentState.invariantConditions.all { it.eval(hybridEncoder.getVariablesPositions(transition.target)) }
                     }
                     .map{Transition(hybridEncoder.nodeInHybrid(currentStateName, it.target), it.direction, it.bound)}
         }
 
-        modelPredecessors.addAll(localPredecessors.asSequence().map {
-            Transition(hybridEncoder.nodeInHybrid(currentStateName, it.target), it.direction, it.bound)
-        })
-
+        modelPredecessors.addAll(localPredecessors)
         return modelPredecessors.iterator()
-
-
     }
 
     override fun Int.successors(timeFlow: Boolean): Iterator<Transition<MutableSet<Rectangle>>> {
         if (!timeFlow)
             return this.predecessors(true)
-        val modelSuccessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
 
+        val modelSuccessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
         val currentStateName = hybridEncoder.decodeModel(this)
         val currentState = statesMap[currentStateName]!!
+        if (!currentState.invariantConditions.all{it.eval(hybridEncoder.getVariablesPositions(this))})
+            return modelSuccessors.iterator()
+
         // inquire jumps to other states
         val relevantJumps = transitions.filter{it.from == currentStateName}
         val varValuation = hybridEncoder.getVariablesPositions(this)
@@ -99,6 +103,11 @@ class HybridModel(
         for (jump in relevantJumps) {
             if (jump.condition.eval(varValuation)) {
                 val target = hybridEncoder.shiftNodeToOtherStateWithOverridenVals(this, jump.to, jump.newPositions)
+                val targetValuation = hybridEncoder.getVariablesPositions(target)
+                val targetState = statesMap[hybridEncoder.decodeModel(target)]!!
+                if (!targetState.invariantConditions.all{it.eval(targetValuation)})
+                    continue
+
                 // TODO what to do with proposition
                 val bounds = mutableSetOf(Rectangle(statesMap[jump.to]!!.odeModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()))
                 modelSuccessors.add(Transition(target, DirectionFormula.Atom.Proposition("x", Facet.POSITIVE), bounds))
