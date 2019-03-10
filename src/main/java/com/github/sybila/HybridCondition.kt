@@ -14,7 +14,7 @@ class ConstantHybridCondition(
 ) : HybridCondition {
     init {
         if (!variable.thresholds.contains(threshold)) {
-            throw IllegalArgumentException("The variable doesn't have specified threshold")
+            throw IllegalArgumentException("The variable ${variable.name} doesn't have specified threshold $threshold")
         }
     }
 

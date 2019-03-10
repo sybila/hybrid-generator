@@ -134,6 +134,31 @@ class HybridModel(
     override fun Formula.Atom.Float.eval(): StateMap<MutableSet<Rectangle>> {
         val left = this.left
         val right = this.right
+
+        if (left is Expression.Variable && right is Expression.Variable && left.name == "state") {
+            if (right.name !in statesMap.keys)
+                throw IllegalArgumentException("Left side of the expression is state which is not in the hybrid model")
+
+            val verifiedStateName = right.name
+            val shouldEqual = this.cmp == CompareOp.EQ
+            val result = HashStateMap(ff)
+            val stateIndices = hybridEncoder.getNodesOfModel(verifiedStateName)
+            if (shouldEqual) {
+                for (state in stateIndices) {
+                    result[state] = tt
+                }
+            } else {
+                for (state in 0 until stateIndices.first) {
+                    result[state] = tt
+                }
+                for (state in stateIndices.last until stateCount) {
+                    result[state] = tt
+                }
+            }
+
+            return result
+        }
+
         val threshold: Double
         val variableName: String
         val gt: Boolean
