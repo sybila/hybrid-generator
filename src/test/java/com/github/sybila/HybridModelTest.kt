@@ -20,17 +20,18 @@ class HybridModelTest {
     private val solver = RectangleSolver(Rectangle(doubleArrayOf()))
     private val onModel = Parser().parse(File("resources", "HeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
     private val offModel = Parser().parse(File("resources", "HeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
-    private val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 80.0, false)))
-    private val offState = HybridState("off", offModel, listOf(ConstantHybridCondition(offModel.variables[0], 30.0, true)))
-    private val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 80.0, true), emptyMap(), emptyList())
-    private val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 30.0, false), emptyMap(), emptyList())
+    private val variableOrder = onModel.variables.map{it -> it.name}.toTypedArray()
+    private val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 85.0, false, variableOrder)))
+    private val offState = HybridState("off", offModel, listOf(ConstantHybridCondition(offModel.variables[0], 25.0, true, variableOrder)))
+    private val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 80.0, true, variableOrder), emptyMap(), emptyList())
+    private val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 30.0, false, variableOrder), emptyMap(), emptyList())
 
     private val hybridModel = HybridModel(solver, listOf(onState, offState), listOf(transition1, transition2))
     private val hybridEncoder = hybridModel.hybridEncoder
 
     @Test
     fun successor_jumpFromOnToOff_jumpsCorrectly() {
-        val thresholdTemp = onModel.variables[0].thresholds.size - 2
+        val thresholdTemp = onModel.variables[0].thresholds.size - 4
         val thresholdTempCoordinate = hybridEncoder.encodeNode("on", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.successors(true).next()
@@ -41,7 +42,7 @@ class HybridModelTest {
 
     @Test
     fun successor_jumpFromOffToOn_jumpsCorrectly() {
-        val thresholdTemp = 1
+        val thresholdTemp = 6
         val thresholdTempCoordinate = hybridEncoder.encodeNode("off", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.successors(true).next()
@@ -74,7 +75,7 @@ class HybridModelTest {
 
     @Test
     fun predecessor_jumpFromOnToOff_jumpsCorrectly() {
-        val thresholdTemp = 2
+        val thresholdTemp = 6
         val thresholdTempCoordinate = hybridEncoder.encodeNode("on", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.predecessors(true).next()
@@ -85,7 +86,7 @@ class HybridModelTest {
 
     @Test
     fun predecessor_jumpFromOffToOn_jumpsCorrectly() {
-        val thresholdTemp = onModel.variables[0].thresholds.size - 2
+        val thresholdTemp = onModel.variables[0].thresholds.size - 4
         val thresholdTempCoordinate = hybridEncoder.encodeNode("off", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.predecessors(true).next()
@@ -200,10 +201,11 @@ class HybridModelTest {
         val solver = RectangleSolver(Rectangle(doubleArrayOf(-2.0, 2.0)))
         val onModel = Parser().parse(File("resources", "ParametrizedHeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
         val offModel = Parser().parse(File("resources", "ParametrizedHeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
-        val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 18.0, false)))
-        val offState = HybridState("off", offModel, listOf(ConstantHybridCondition(offModel.variables[0], 3.0, true)))
-        val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 15.0, true), emptyMap(), emptyList())
-        val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 5.0, false), emptyMap(), emptyList())
+        val variableOrder = onModel.variables.map{it -> it.name}.toTypedArray()
+        val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 18.0, false, variableOrder)))
+        val offState = HybridState("off", offModel, listOf(ConstantHybridCondition(offModel.variables[0], 3.0, true, variableOrder)))
+        val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 15.0, true, variableOrder), emptyMap(), emptyList())
+        val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 5.0, false, variableOrder), emptyMap(), emptyList())
         val hybridModel = HybridModel(solver, listOf(onState, offState), listOf(transition1, transition2))
         SequentialChecker(hybridModel).use { checker ->
             val r = checker.verify(formula)

@@ -17,18 +17,18 @@ class HybridModel(
     private val statesMap = states.associateBy({it.label}, {it})
     val hybridEncoder = HybridNodeEncoder(statesMap)
     private val variables: List<OdeModel.Variable> = states.first().odeModel.variables
-
+    private val variableOrder = variables.map { it.name }.toTypedArray()
     init {
         for (s in states) {
             val stateVariables = s.odeModel.variables
             if (stateVariables.count() != variables.count()) {
-                throw IllegalArgumentException("Invalid variable count")
+                throw IllegalArgumentException("Inconsistent variable count")
             }
 
             for (i in 0..(variables.count()-1)) {
                 if (stateVariables[i].name != variables[i].name ||
                         stateVariables[i].thresholds != variables[i].thresholds) {
-                    throw IllegalArgumentException("Invalid variable name or threshold")
+                    throw IllegalArgumentException("Inconsistent variable name or threshold")
                 }
             }
         }
@@ -44,26 +44,27 @@ class HybridModel(
         val modelPredecessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
         val currentStateName = hybridEncoder.decodeModel(this)
         val currentState = statesMap[currentStateName]!!
+        val currentVariableCoordinates = hybridEncoder.getVariableCoordinates(this)
 
-        if (!currentState.invariantConditions.all { it.eval(hybridEncoder.getVariablesPositions(this))})
+        if (!currentState.invariantConditions.all { it.eval(currentVariableCoordinates)})
             return modelPredecessors.iterator()
 
         // inquire jumps from other states
         val relevantJumps = transitions.filter{it.to == currentStateName}
-        val varValuation = hybridEncoder.getVariablesPositions(this)
+        val variableCoordinates = hybridEncoder.getVariableCoordinates(this)
 
         for (jump in relevantJumps) {
-            if (jump.newPositions.any{varValuation[it.key] != it.value})
+            if (jump.newPositions.any{variableCoordinates[variableOrder.indexOf(it.key)] != it.value})
                 // some variable does not fulfill initial valuation after the jump
                 continue
 
             val staticVariables = variables.map{it.name}.toSet().minus(jump.newPositions.keys)
             for (node in hybridEncoder.getNodesOfModel(jump.from)) {
-                val predecessorValuation = hybridEncoder.getVariablesPositions(node)
+                val predecessorCoordinates = hybridEncoder.getVariableCoordinates(node)
                 val predecessorState = statesMap[hybridEncoder.decodeModel(node)]!!
-                if (staticVariables.all{varValuation[it] == predecessorValuation[it]}
-                        && jump.condition.eval(predecessorValuation)
-                        && predecessorState.invariantConditions.all { it.eval(predecessorValuation) }) {
+                if (staticVariables.all{variableCoordinates[variableOrder.indexOf(it)] == predecessorCoordinates[variableOrder.indexOf(it)]}
+                        && jump.condition.eval(predecessorCoordinates)
+                        && predecessorState.invariantConditions.all { it.eval(predecessorCoordinates) }) {
                     val bounds = mutableSetOf(Rectangle(statesMap[jump.from]!!.odeModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()))
                     modelPredecessors.add(Transition(node, DirectionFormula.Atom.Proposition("x", Facet.POSITIVE), bounds))
                 }
@@ -77,7 +78,7 @@ class HybridModel(
                     .predecessors(true)
                     .asSequence()
                     .filter{ transition ->
-                        currentState.invariantConditions.all { it.eval(hybridEncoder.getVariablesPositions(transition.target)) }
+                        currentState.invariantConditions.all { it.eval(hybridEncoder.getVariableCoordinates(transition.target)) }
                     }
                     .map{Transition(hybridEncoder.nodeInHybrid(currentStateName, it.target), it.direction, it.bound)}
         }
@@ -93,19 +94,19 @@ class HybridModel(
         val modelSuccessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
         val currentStateName = hybridEncoder.decodeModel(this)
         val currentState = statesMap[currentStateName]!!
-        if (!currentState.invariantConditions.all{it.eval(hybridEncoder.getVariablesPositions(this))})
+        if (!currentState.invariantConditions.all{it.eval(hybridEncoder.getVariableCoordinates(this))})
             return modelSuccessors.iterator()
 
         // inquire jumps to other states
         val relevantJumps = transitions.filter{it.from == currentStateName}
-        val varValuation = hybridEncoder.getVariablesPositions(this)
+        val variableCoordinates = hybridEncoder.getVariableCoordinates(this)
 
         for (jump in relevantJumps) {
-            if (jump.condition.eval(varValuation)) {
+            if (jump.condition.eval(variableCoordinates)) {
                 val target = hybridEncoder.shiftNodeToOtherStateWithOverridenVals(this, jump.to, jump.newPositions)
-                val targetValuation = hybridEncoder.getVariablesPositions(target)
+                val targetCoordinates = hybridEncoder.getVariableCoordinates(target)
                 val targetState = statesMap[hybridEncoder.decodeModel(target)]!!
-                if (!targetState.invariantConditions.all{it.eval(targetValuation)})
+                if (!targetState.invariantConditions.all{it.eval(targetCoordinates)})
                     continue
 
                 // TODO what to do with proposition
@@ -121,7 +122,7 @@ class HybridModel(
                     .successors(true)
                     .asSequence()
                     .filter{ transition ->
-                            currentState.invariantConditions.all { it.eval(hybridEncoder.getVariablesPositions(transition.target))                        }
+                            currentState.invariantConditions.all { it.eval(hybridEncoder.getVariableCoordinates(transition.target))                        }
                     }
                     .map{Transition(hybridEncoder.nodeInHybrid(currentStateName, it.target), it.direction, it.bound)}
         }
@@ -135,11 +136,13 @@ class HybridModel(
         val left = this.left
         val right = this.right
 
-        if (left is Expression.Variable && right is Expression.Variable && left.name == "state") {
-            if (right.name !in statesMap.keys)
-                throw IllegalArgumentException("Left side of the expression is state which is not in the hybrid model")
+        if (left is Expression.Variable && right is Expression.Variable && (left.name == "state" || right.name == "state")) {
+            val verifiedStateName =  if (left.name == "state") right.name else left.name
+            if (verifiedStateName !in statesMap.keys)
+                throw IllegalArgumentException("The state in condition is not in the hybrid model")
+            if (this.cmp != CompareOp.EQ && this.cmp != CompareOp.NEQ)
+                throw IllegalArgumentException("Only == and != operators can be used to compare with state")
 
-            val verifiedStateName = right.name
             val shouldEqual = this.cmp == CompareOp.EQ
             val result = HashStateMap(ff)
             val stateIndices = hybridEncoder.getNodesOfModel(verifiedStateName)

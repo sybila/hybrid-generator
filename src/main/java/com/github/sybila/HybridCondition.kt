@@ -4,22 +4,24 @@ import com.github.sybila.ode.model.OdeModel
 
 
 interface HybridCondition {
-    fun eval(variablePositions: Map<String, Int>): Boolean
+    fun eval(variableCoordinates: IntArray): Boolean
 }
 
 class ConstantHybridCondition(
         private val variable: OdeModel.Variable,
         private val threshold: Double,
-        private val gt: Boolean
+        private val gt: Boolean,
+        variableCoordinateOrder: Array<String>
 ) : HybridCondition {
+    private val variableIndex = variableCoordinateOrder.indexOf(variable.name)
     init {
         if (!variable.thresholds.contains(threshold)) {
             throw IllegalArgumentException("The variable ${variable.name} doesn't have specified threshold $threshold")
         }
     }
 
-    override fun eval(variablePositions: Map<String, Int>): Boolean {
-        val thresholdIndex = variablePositions[variable.name]!!
+    override fun eval(variableCoordinates: IntArray): Boolean {
+        val thresholdIndex = variableCoordinates[variableIndex]
         val variableValue = variable.thresholds[thresholdIndex]
         val isGt = variableValue > threshold
         return gt == isGt
@@ -29,12 +31,16 @@ class ConstantHybridCondition(
 class VariableHybridCondition(
         private val firstVariable: OdeModel.Variable,
         private val secondVariable: OdeModel.Variable,
-        private val gt: Boolean
+        private val gt: Boolean,
+        variableCoordinateOrder: Array<String>
 ) : HybridCondition {
-    override fun eval(variablePositions: Map<String, Int>): Boolean {
-        val firstThresholdIndex = variablePositions[firstVariable.name]!!
+    private val firstVariableIndex = variableCoordinateOrder.indexOf(firstVariable.name)
+    private val secondVariableIndex = variableCoordinateOrder.indexOf(secondVariable.name)
+
+    override fun eval(variableCoordinates: IntArray): Boolean {
+        val firstThresholdIndex = variableCoordinates[firstVariableIndex]
         val firstVariableValue = firstVariable.thresholds[firstThresholdIndex]
-        val secondThresholdIndex = variablePositions[secondVariable.name]!!
+        val secondThresholdIndex = variableCoordinates[secondVariableIndex]
         val secondVariableValue = firstVariable.thresholds[secondThresholdIndex]
         val isGt = firstVariableValue > secondVariableValue
         return gt == isGt

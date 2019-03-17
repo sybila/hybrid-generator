@@ -59,14 +59,11 @@ class HybridNodeEncoder(
         return node % statesPerModel
     }
 
-    fun getVariablesPositions(node: Int): Map<String, Int> {
+    fun getVariableCoordinates(node: Int): IntArray {
         val modelIndex = node / statesPerModel
         val modelKey = this.modelsOrder[modelIndex]
-        val position = node % statesPerModel
         val encoder = modelEncoders[modelKey]!!
-        val map = HashMap<String, Int>()
-        variables.forEachIndexed{i, v -> map[v] = encoder.coordinate(position, i)}
-        return map
+        return encoder.decodeNode(node)
     }
 
     fun getNodesOfModel(modelKey: String): IntRange {

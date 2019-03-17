@@ -21,24 +21,26 @@ class AlternasHybridModelTest(private val parameterName: String) {
     private val m3Model = Parser().parse(Paths.get("resources", "alternas", "parametrized$parameterName", "M3.bio").toFile()).computeApproximation(fast = false, cutToRange = false)
     private val m4Model = Parser().parse(Paths.get("resources", "alternas", "parametrized$parameterName", "M4.bio").toFile()).computeApproximation(fast = false, cutToRange = false)
 
-    private val m1State = HybridState("m1", m1Model, listOf(ConstantHybridCondition(m1Model.variables[0], 1.0, false), ConstantHybridCondition(m1Model.variables[1], 0.05, true)))
-    private val m2State = HybridState("m2", m1Model, listOf(ConstantHybridCondition(m2Model.variables[0], 1.0, false), ConstantHybridCondition(m2Model.variables[1], 0.1, false)))
-    private val m3State = HybridState("m3", m1Model, listOf(ConstantHybridCondition(m3Model.variables[0], 300.0, false), ConstantHybridCondition(m3Model.variables[1], 0.05, true)))
-    private val m4State = HybridState("m4", m1Model, listOf(ConstantHybridCondition(m4Model.variables[0], 300.0, false), ConstantHybridCondition(m4Model.variables[1], 0.1, false)))
+    private val variableOrder = m1Model.variables.map{ it.name }.toTypedArray()
 
-    private val t12 = HybridTransition("m1", "m2", ConstantHybridCondition(m1Model.variables[1], 0.1, false), emptyMap(), emptyList())
-    private val t13 = HybridTransition("m1", "m3", ConstantHybridCondition(m1Model.variables[0], 0.95, true), emptyMap(), emptyList())
+    private val m1State = HybridState("m1", m1Model, listOf(ConstantHybridCondition(m1Model.variables[0], 1.0, false, variableOrder), ConstantHybridCondition(m1Model.variables[1], 0.05, true, variableOrder)))
+    private val m2State = HybridState("m2", m1Model, listOf(ConstantHybridCondition(m2Model.variables[0], 1.0, false, variableOrder), ConstantHybridCondition(m2Model.variables[1], 0.1, false, variableOrder)))
+    private val m3State = HybridState("m3", m1Model, listOf(ConstantHybridCondition(m3Model.variables[0], 300.0, false, variableOrder), ConstantHybridCondition(m3Model.variables[1], 0.05, true, variableOrder)))
+    private val m4State = HybridState("m4", m1Model, listOf(ConstantHybridCondition(m4Model.variables[0], 300.0, false, variableOrder), ConstantHybridCondition(m4Model.variables[1], 0.1, false, variableOrder)))
+
+    private val t12 = HybridTransition("m1", "m2", ConstantHybridCondition(m1Model.variables[1], 0.1, false, variableOrder), emptyMap(), emptyList())
+    private val t13 = HybridTransition("m1", "m3", ConstantHybridCondition(m1Model.variables[0], 0.95, true, variableOrder), emptyMap(), emptyList())
     //private val t11 = HybridTransition("m1", "m1", ConstantHybridCondition(m1Model.variables[0], 300.0, true), mapOf(Pair("t", 0.0)), m1Model.variables)
 
-    private val t21 = HybridTransition("m2", "m1", ConstantHybridCondition(m1Model.variables[1], 0.05, true), emptyMap(), emptyList())
-    private val t24 = HybridTransition("m2", "m4", ConstantHybridCondition(m1Model.variables[0], 0.95, true), emptyMap(), emptyList())
+    private val t21 = HybridTransition("m2", "m1", ConstantHybridCondition(m1Model.variables[1], 0.05, true, variableOrder), emptyMap(), emptyList())
+    private val t24 = HybridTransition("m2", "m4", ConstantHybridCondition(m1Model.variables[0], 0.95, true, variableOrder), emptyMap(), emptyList())
     //private val t22 = HybridTransition("m2", "m2", ConstantHybridCondition(m1Model.variables[0], 300.0, true), mapOf(Pair("t", 0.0)), m2Model.variables)
 
-    private val t34 = HybridTransition("m3", "m4", ConstantHybridCondition(m1Model.variables[1], 0.1, false), emptyMap(), emptyList())
-    private val t31 = HybridTransition("m3", "m1", ConstantHybridCondition(m1Model.variables[0], 300.0, true), mapOf(Pair("t", 0.0)), m3Model.variables)
+    private val t34 = HybridTransition("m3", "m4", ConstantHybridCondition(m1Model.variables[1], 0.1, false, variableOrder), emptyMap(), emptyList())
+    private val t31 = HybridTransition("m3", "m1", ConstantHybridCondition(m1Model.variables[0], 300.0, true, variableOrder), mapOf(Pair("t", 0.0)), m3Model.variables)
 
-    private val t43 = HybridTransition("m4", "m3", ConstantHybridCondition(m1Model.variables[1], 0.1, false), emptyMap(), emptyList())
-    private val t42 = HybridTransition("m4", "m2", ConstantHybridCondition(m1Model.variables[0], 300.0, true), mapOf(Pair("t", 0.0)), m4Model.variables)
+    private val t43 = HybridTransition("m4", "m3", ConstantHybridCondition(m1Model.variables[1], 0.1, false, variableOrder), emptyMap(), emptyList())
+    private val t42 = HybridTransition("m4", "m2", ConstantHybridCondition(m1Model.variables[0], 300.0, true, variableOrder), mapOf(Pair("t", 0.0)), m4Model.variables)
 
     private val hybridModel = HybridModel(solver, listOf(m1State, m2State, m3State, m4State), listOf(t12, t13, t21, t24, t34, t31, t43, t42))
 
@@ -46,10 +48,10 @@ class AlternasHybridModelTest(private val parameterName: String) {
         @JvmStatic
         @Parameterized.Parameters
         fun params() = listOf(
-                arrayOf("Stimulus"),
-                arrayOf("TCloseInv"),
-                arrayOf("TInInv"),
-                arrayOf("TOpenInv"),
+                //arrayOf("Stimulus"),
+                //arrayOf("TCloseInv"),
+                //arrayOf("TInInv"),
+                //arrayOf("TOpenInv"),
                 arrayOf("TOutInv")
         )
     }
