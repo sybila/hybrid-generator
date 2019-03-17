@@ -44,27 +44,23 @@ class HybridModel(
         val modelPredecessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
         val currentStateName = hybridEncoder.decodeModel(this)
         val currentState = statesMap[currentStateName]!!
-        val currentVariableCoordinates = hybridEncoder.getVariableCoordinates(this)
+        val currentCoordinates = hybridEncoder.getVariableCoordinates(this)
 
-        if (!currentState.invariantConditions.all { it.eval(currentVariableCoordinates)})
+        if (!currentState.invariantConditions.all { it.eval(currentCoordinates)})
             return modelPredecessors.iterator()
 
         // inquire jumps from other states
         val relevantJumps = transitions.filter{it.to == currentStateName}
-        val variableCoordinates = hybridEncoder.getVariableCoordinates(this)
 
         for (jump in relevantJumps) {
-            if (jump.newPositions.any{variableCoordinates[variableOrder.indexOf(it.key)] != it.value})
+            if (jump.newPositions.any{currentCoordinates[variableOrder.indexOf(it.key)] != it.value})
                 // some variable does not fulfill initial valuation after the jump
                 continue
 
-            val staticVariables = variables.map{it.name}.toSet().minus(jump.newPositions.keys)
-            for (node in hybridEncoder.getNodesOfModel(jump.from)) {
+            for (node in hybridEncoder.getPossibleJumpStates(currentCoordinates, jump.from, jump.newPositions.keys.toList())) {
                 val predecessorCoordinates = hybridEncoder.getVariableCoordinates(node)
                 val predecessorState = statesMap[hybridEncoder.decodeModel(node)]!!
-                if (staticVariables.all{variableCoordinates[variableOrder.indexOf(it)] == predecessorCoordinates[variableOrder.indexOf(it)]}
-                        && jump.condition.eval(predecessorCoordinates)
-                        && predecessorState.invariantConditions.all { it.eval(predecessorCoordinates) }) {
+                if (predecessorState.invariantConditions.all { it.eval(predecessorCoordinates) }) {
                     val bounds = mutableSetOf(Rectangle(statesMap[jump.from]!!.odeModel.parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()))
                     modelPredecessors.add(Transition(node, DirectionFormula.Atom.Proposition("x", Facet.POSITIVE), bounds))
                 }

@@ -48,10 +48,10 @@ class AlternasHybridModelTest(private val parameterName: String) {
         @JvmStatic
         @Parameterized.Parameters
         fun params() = listOf(
-                //arrayOf("Stimulus"),
-                //arrayOf("TCloseInv"),
-                //arrayOf("TInInv"),
-                //arrayOf("TOpenInv"),
+                arrayOf("Stimulus"),
+                arrayOf("TCloseInv"),
+                arrayOf("TInInv"),
+                arrayOf("TOpenInv"),
                 arrayOf("TOutInv")
         )
     }

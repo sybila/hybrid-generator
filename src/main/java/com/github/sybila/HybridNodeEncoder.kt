@@ -1,11 +1,7 @@
 package com.github.sybila
 
 import com.github.sybila.ode.generator.NodeEncoder
-import com.github.sybila.ode.model.OdeModel
-import java.util.*
-import java.util.Collections.list
 import java.util.Collections.max
-import kotlin.collections.HashMap
 
 class HybridNodeEncoder(
         models: Map<String, HybridState>
@@ -17,7 +13,8 @@ class HybridNodeEncoder(
     )
     val statesPerModel = max(modelEncoders.map{ encoder -> encoder.value.stateCount})!!
     private val modelsOrder = listOf(*(models.keys.toTypedArray()))
-    private val variables = listOf(*(models.values.first().odeModel.variables.map{it.name}.toTypedArray()))
+    private val variableNamesOrder = listOf(*(models.values.first().odeModel.variables.map{it.name}.toTypedArray()))
+    private val variables = models.values.first().odeModel.variables.associateBy({it.name}, {it})
 
     val stateCount: Int = models.count() * statesPerModel
 
@@ -79,10 +76,46 @@ class HybridNodeEncoder(
         val encoder = modelEncoders[modelKey]!!
         val coordinates = encoder.decodeNode(oldPosition % statesPerModel)
         for (ov in overridenVars.keys) {
-            val varIndex = variables.indexOf(ov)
+            val varIndex = variableNamesOrder.indexOf(ov)
             coordinates[varIndex] = overridenVars[ov]!!
         }
         return encodeNode(newState, coordinates)
+    }
+
+
+    fun getPossibleJumpStates(coordinates: IntArray, to: String, dynamicVariables: List<String>): List<Int> {
+        val possibleStates = mutableListOf<Int>()
+        if (dynamicVariables.isEmpty()) {
+            possibleStates.add(encodeNode(to, coordinates))
+            return possibleStates
+        }
+
+        val dynamicIndices = dynamicVariables.map { variableNamesOrder.indexOf(it) }
+        val ranges = mutableListOf<List<Int>>()
+        for (i in 0 until dynamicVariables.size) {
+            ranges.add((0 until variables[dynamicVariables[i]]!!.thresholds.size - 1).toList())
+        }
+
+        val allCombinations = ranges.toList().fold(emptyList<List<Int>>()) { x, y -> combine(x, y)}
+
+        for (combination in allCombinations) {
+            for (i in 0 until combination.size) {
+                coordinates[dynamicIndices[i]] = combination[i]
+            }
+            possibleStates.add(encodeNode(to, coordinates))
+        }
+
+        return possibleStates
+    }
+
+    private fun combine(accumulators: List<List<Int>>, addition: List<Int>): List<List<Int>> {
+        val lists = mutableListOf<List<Int>>()
+        for (acc in accumulators) {
+            for (a in addition) {
+                lists.add(acc + a)
+            }
+        }
+        return lists
     }
 
 

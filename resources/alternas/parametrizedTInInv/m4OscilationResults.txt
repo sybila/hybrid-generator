@@ -1,5 +1,5 @@
 Verified formula: (state == m4) && AG (EF state == m4)
-Elapsed time [mm:ss:SSS]: 10:15:453
+Elapsed time [mm:ss:SSS]: 00:01:921
 State m4; Init state: t:0.05 v:0.0 h:0.0 ; TInInv: [-500.0, -183.00664052287584]
 State m4; Init state: t:0.0 v:0.0 h:0.0 ; TInInv: [-500.0, -183.00664052287584]
 State m4; Init state: t:0.15 v:0.0 h:0.0 ; TInInv: [-500.0, -183.00664052287584]
