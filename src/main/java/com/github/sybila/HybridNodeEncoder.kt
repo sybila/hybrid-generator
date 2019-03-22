@@ -6,109 +6,138 @@ import java.util.Collections.max
 class HybridNodeEncoder(
         models: Map<String, HybridState>
 ) {
-    val modelEncoders = hashMapOf(
+    internal val stateModelEncoders = hashMapOf(
             *(models.map { entry ->
                 Pair(entry.key, NodeEncoder(entry.value.odeModel))
             }.toTypedArray())
     )
-    val statesPerModel = max(modelEncoders.map{ encoder -> encoder.value.stateCount})!!
-    private val modelsOrder = listOf(*(models.keys.toTypedArray()))
+    internal val nodesPerState = max(stateModelEncoders.map{ encoder -> encoder.value.stateCount})!!
+    private val stateNamesOrder = listOf(*(models.keys.toTypedArray()))
     private val variableNamesOrder = listOf(*(models.values.first().odeModel.variables.map{it.name}.toTypedArray()))
     private val variables = models.values.first().odeModel.variables.associateBy({it.name}, {it})
 
-    val stateCount: Int = models.count() * statesPerModel
+    val nodeCount: Int = models.count() * nodesPerState
+
 
     /**
-     * Encode given coordinate array into a single number.
+     * Encode given state name and coordinate array into a single number.
      */
     fun encodeNode(modelKey: String, coordinates: IntArray): Int {
-        val modelIndex = modelsOrder.indexOf(modelKey) * statesPerModel
-        val modelEncoder = modelEncoders[modelKey] ?: return -1
+        val modelIndex = stateNamesOrder.indexOf(modelKey) * nodesPerState
+        val modelEncoder = stateModelEncoders[modelKey]!!
         return modelIndex + modelEncoder.encodeNode(coordinates)
     }
 
+
     /**
-     * Decode given node into array of it's coordinates.
+     * Decode given node into a state name and array of it's coordinates.
      */
     fun decodeNode(node: Int): Pair<String, IntArray> {
-        val modelIndex = node / statesPerModel
-        val modelKey = this.modelsOrder[modelIndex]
-        val coordinatesInModel = modelEncoders[modelKey]!!.decodeNode(node % statesPerModel)
+        val modelKey = getNodeState(node)
+        val coordinatesInModel = stateModelEncoders[modelKey]!!.decodeNode(node % nodesPerState)
         return Pair(modelKey, coordinatesInModel)
     }
 
-    fun decodeModel(node: Int): String {
-        val modelIndex = node / statesPerModel
-        return this.modelsOrder[modelIndex]
+
+    /**
+     * Returns the name of the model to which the node belongs.
+     */
+    fun getNodeState(node: Int): String {
+        val modelIndex = node / nodesPerState
+        return this.stateNamesOrder[modelIndex]
     }
 
+
+    /**
+     * Returns coordinate of the node in the specified dimension
+     */
     fun coordinate(of: Int, dim: Int): Int {
-        val modelIndex = of / statesPerModel
-        val modelKey = this.modelsOrder[modelIndex]
-        return modelEncoders[modelKey]!!.coordinate(of % statesPerModel, dim)
+        val modelKey = getNodeState(of)
+        return stateModelEncoders[modelKey]!!.coordinate(of % nodesPerState, dim)
     }
 
+
+    /**
+     * Transforms the node's position within the discrete state (model) into the position within the hybrid system
+     */
     fun nodeInHybrid(modelKey: String, node: Int): Int {
-        return modelsOrder.indexOf(modelKey) * statesPerModel + node
+        return stateNamesOrder.indexOf(modelKey) * nodesPerState + node
     }
 
-    fun nodeInModel(node: Int): Int {
-        return node % statesPerModel
+
+    /**
+     * Transforms the node's position within the hybrid system into the position within the discrete state (model)
+     */
+    fun nodeInState(node: Int): Int {
+        return node % nodesPerState
     }
 
+
+    /**
+     * Decodes node into array of coordinates of the variables.
+     */
     fun getVariableCoordinates(node: Int): IntArray {
-        val modelIndex = node / statesPerModel
-        val modelKey = this.modelsOrder[modelIndex]
-        val encoder = modelEncoders[modelKey]!!
-        return encoder.decodeNode(node)
+        val modelKey = getNodeState(node)
+        return stateModelEncoders[modelKey]!!.decodeNode(node % nodesPerState)
     }
 
-    fun getNodesOfModel(modelKey: String): IntRange {
-        val modelIndex = this.modelsOrder.indexOf(modelKey)
-        val beginning =  modelIndex * statesPerModel
-        val end = beginning + statesPerModel
+
+    /**
+     * Returns all nodes of the specified state.
+     */
+    fun getNodesOfModelState(modelKey: String): IntRange {
+        val modelIndex = stateNamesOrder.indexOf(modelKey)
+        val beginning =  modelIndex * nodesPerState
+        val end = beginning + nodesPerState
         return beginning until end
     }
 
-    fun shiftNodeToOtherStateWithOverridenVals(oldPosition: Int, newState: String, overridenVars: Map<String, Int>): Int {
-        val modelIndex = oldPosition / statesPerModel
-        val modelKey = this.modelsOrder[modelIndex]
-        val encoder = modelEncoders[modelKey]!!
-        val coordinates = encoder.decodeNode(oldPosition % statesPerModel)
-        for (ov in overridenVars.keys) {
+
+    /**
+     * Shifts node from the old position to the new state while updating the values specific for the jump
+     */
+    fun shiftNodeToOtherStateWithUpdatedValues(oldPosition: Int, newState: String, updatedVariables: Map<String, Int>): Int {
+        val coordinates = getVariableCoordinates(oldPosition)
+
+        for (ov in updatedVariables.keys) {
             val varIndex = variableNamesOrder.indexOf(ov)
-            coordinates[varIndex] = overridenVars[ov]!!
+            coordinates[varIndex] = updatedVariables[ov]!!
         }
+
         return encodeNode(newState, coordinates)
     }
 
 
-    fun getPossibleJumpStates(coordinates: IntArray, to: String, dynamicVariables: List<String>): List<Int> {
-        val possibleStates = mutableListOf<Int>()
+    /**
+     * Returns all nodes in the specified state, where are all possible combinations of specified dynamic variables
+     * and each static (not dynamic) variable has specified implicit coordinates.
+     */
+    fun enumerateStateNodesWithValidCoordinates(coordinates: IntArray, state: String, dynamicVariables: List<String>): List<Int> {
         if (dynamicVariables.isEmpty()) {
-            possibleStates.add(encodeNode(to, coordinates))
-            return possibleStates
+            // No dynamic variables -> only static coordinates in the state are valid
+            return listOf(encodeNode(state, coordinates))
         }
 
-        val dynamicIndices = dynamicVariables.map { variableNamesOrder.indexOf(it) }
-        val ranges = mutableListOf<List<Int>>()
-        for (i in 0 until dynamicVariables.size) {
-            ranges.add((0 until variables[dynamicVariables[i]]!!.thresholds.size - 1).toList())
-        }
+        val dynamicVariableIndices = dynamicVariables.map { variableNamesOrder.indexOf(it) }
 
-        val allCombinations = ranges.toList().fold(emptyList<List<Int>>()) { x, y -> combine(x, y)}
+        // Generate all coordinate combinations of the dynamic variables
+        val dynamicVariableRanges = dynamicVariables.map { 0 until variables[it]!!.thresholds.size - 1 }
+        val dynamicCoordinateCombinations = dynamicVariableRanges.fold(
+                emptyList<List<Int>>()) { x, y -> crossAppend(x, y)}
 
-        for (combination in allCombinations) {
+        val possibleStates = mutableListOf<Int>()
+        for (combination in dynamicCoordinateCombinations) {
             for (i in 0 until combination.size) {
-                coordinates[dynamicIndices[i]] = combination[i]
+                // Update value of all dynamic variables to the current combination
+                coordinates[dynamicVariableIndices[i]] = combination[i]
             }
-            possibleStates.add(encodeNode(to, coordinates))
+            possibleStates.add(encodeNode(state, coordinates))
         }
 
         return possibleStates
     }
 
-    private fun combine(accumulators: List<List<Int>>, addition: List<Int>): List<List<Int>> {
+    private fun crossAppend(accumulators: List<List<Int>>, addition: IntRange): List<List<Int>> {
         val lists = mutableListOf<List<Int>>()
         for (acc in accumulators) {
             for (a in addition) {
@@ -117,45 +146,4 @@ class HybridNodeEncoder(
         }
         return lists
     }
-
-
-    /**
-
-    /**
-     * Find an id node that is above given node in specified dimension.
-     * Return null if such node is not in the model.
-     */
-    fun higherNode(from: Int, dim: Int): Int? {
-        val coordinate = (from / dimensionMultipliers[dim]) % dimensionStateCounts[dim]
-        return if (coordinate == dimensionStateCounts[dim] - 1) null else from + dimensionMultipliers[dim]
-    }
-
-    /**
-     * Find an id node that is below given node in specified dimension.
-     * Return null if such node is not in the model.
-     */
-    fun lowerNode(from: Int, dim: Int): Int? {
-        val coordinate = (from / dimensionMultipliers[dim]) % dimensionStateCounts[dim]
-        return if (coordinate == 0) null else from - dimensionMultipliers[dim]
-    }
-
-    /**
-     * Return index of upper threshold in specified dimension
-     */
-    fun upperThreshold(of: Int, dim: Int): Int {
-        return (of / dimensionMultipliers[dim]) % dimensionStateCounts[dim] + 1
-    }
-
-    /**
-     * Return index of lower threshold in specified dimension
-     */
-    fun lowerThreshold(of: Int, dim: Int): Int {
-        return (of / dimensionMultipliers[dim]) % dimensionStateCounts[dim]
-    }
-
-    fun threshold(of: Int, dim: Int, upper: Boolean): Int {
-        return (of / dimensionMultipliers[dim]) % dimensionStateCounts[dim] + if (upper) 1 else 0
-    }
-
-*/
 }

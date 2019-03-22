@@ -21,8 +21,9 @@ class HybridModelTest {
     private val onModel = Parser().parse(File("resources", "HeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
     private val offModel = Parser().parse(File("resources", "HeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
     private val variableOrder = onModel.variables.map{it -> it.name}.toTypedArray()
-    private val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 85.0, false, variableOrder)))
-    private val offState = HybridState("off", offModel, listOf(ConstantHybridCondition(offModel.variables[0], 25.0, true, variableOrder)))
+    private val invariants = listOf(ConstantHybridCondition(onModel.variables[0], 85.0, false, variableOrder), ConstantHybridCondition(offModel.variables[0], 25.0, true, variableOrder))
+    private val onState = HybridState("on", onModel, invariants)
+    private val offState = HybridState("off", offModel, invariants)
     private val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 80.0, true, variableOrder), emptyMap(), emptyList())
     private val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 30.0, false, variableOrder), emptyMap(), emptyList())
 
@@ -35,7 +36,7 @@ class HybridModelTest {
         val thresholdTempCoordinate = hybridEncoder.encodeNode("on", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.successors(true).next()
-            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.getNodeState(jump.target)
             assertEquals("off", decodedTarget)
         }
     }
@@ -46,7 +47,7 @@ class HybridModelTest {
         val thresholdTempCoordinate = hybridEncoder.encodeNode("off", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.successors(true).next()
-            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.getNodeState(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
@@ -57,7 +58,7 @@ class HybridModelTest {
         val stableTempCoordinates = hybridEncoder.encodeNode("on", intArrayOf(stableTemp))
         with (hybridModel) {
             val jump = stableTempCoordinates.successors(true).next()
-            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.getNodeState(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
@@ -68,7 +69,7 @@ class HybridModelTest {
         val stableTempCoordinates = hybridEncoder.encodeNode("off", intArrayOf(stableTemp))
         with (hybridModel) {
             val jump = stableTempCoordinates.successors(true).next()
-            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.getNodeState(jump.target)
             assertEquals("off", decodedTarget)
         }
     }
@@ -79,7 +80,7 @@ class HybridModelTest {
         val thresholdTempCoordinate = hybridEncoder.encodeNode("on", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.predecessors(true).next()
-            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.getNodeState(jump.target)
             assertEquals("off", decodedTarget)
         }
     }
@@ -90,7 +91,7 @@ class HybridModelTest {
         val thresholdTempCoordinate = hybridEncoder.encodeNode("off", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.predecessors(true).next()
-            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.getNodeState(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
@@ -101,7 +102,7 @@ class HybridModelTest {
         val stableTempCoordinates = hybridEncoder.encodeNode("on", intArrayOf(stableTemp))
         with (hybridModel) {
             val jump = stableTempCoordinates.predecessors(true).next()
-            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.getNodeState(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
@@ -112,7 +113,7 @@ class HybridModelTest {
         val stableTempCoordinates = hybridEncoder.encodeNode("off", intArrayOf(stableTemp))
         with (hybridModel) {
             val jump = stableTempCoordinates.predecessors(true).next()
-            val decodedTarget = hybridEncoder.decodeModel(jump.target)
+            val decodedTarget = hybridEncoder.getNodeState(jump.target)
             assertEquals("off", decodedTarget)
         }
     }
@@ -170,25 +171,12 @@ class HybridModelTest {
                 }
             }
 
-            val missingPredecessorsEdges = successorGraph.filter { it !in predecessorGraph }
-            val missingSuccessorsEdges = predecessorGraph.filter { it !in successorGraph }
-
-            if (missingPredecessorsEdges.isNotEmpty()) {
-                println("Missing predecessors")
-                missingPredecessorsEdges.forEach{println("Edge (${it.first.stateString(hybridEncoder)},${it.second.stateString(hybridEncoder)}) present in successors, but not in predecessors")}
-            }
-
-            if (missingSuccessorsEdges.isNotEmpty()) {
-                println("Missing predecessors")
-                missingPredecessorsEdges.forEach{println("Edge (${it.first.stateString(hybridEncoder)},${it.second.stateString(hybridEncoder)}) present in successors, but not in predecessors")}
-            }
-
             for (pair in successorGraph) {
-                kotlin.test.assertTrue { pair in predecessorGraph }
+                kotlin.test.assertTrue("$pair not in predecessors graph") { pair in predecessorGraph }
             }
 
             for (pair in predecessorGraph) {
-                kotlin.test.assertTrue { pair in successorGraph }
+                kotlin.test.assertTrue("$pair not in successors graph") { pair in successorGraph }
             }
 
             kotlin.test.assertEquals(successorGraph.toSet(), predecessorGraph.toSet())

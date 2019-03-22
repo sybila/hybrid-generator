@@ -28,13 +28,13 @@ class ParametrizedHeaterHybridModel(
     val maxTransitionTemp = 15
 
     override val stateCount: Int
-        get() = hybridEncoder.stateCount
+        get() = hybridEncoder.nodeCount
 
     override fun Int.predecessors(timeFlow: Boolean): Iterator<Transition<MutableSet<Rectangle>>> {
         if (!timeFlow)
             return this.successors(true)
 
-        val model = hybridEncoder.decodeModel(this)
+        val model = hybridEncoder.getNodeState(this)
         val predecessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
         if (model == "off") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
@@ -46,7 +46,7 @@ class ParametrizedHeaterHybridModel(
                 )
             }
 
-            val valInModel = hybridEncoder.nodeInModel(this)
+            val valInModel = hybridEncoder.nodeInState(this)
             val modelSuccessors: Iterator<Transition<MutableSet<Rectangle>>>
             with (offRectangleOdeModel) {
                 modelSuccessors = valInModel.predecessors(true)
@@ -68,7 +68,7 @@ class ParametrizedHeaterHybridModel(
                 )
             }
 
-            val valInModel = hybridEncoder.nodeInModel(this)
+            val valInModel = hybridEncoder.nodeInState(this)
             val modelSuccessors: Iterator<Transition<MutableSet<Rectangle>>>
             with (onRectangleOdeModel) {
                 modelSuccessors = valInModel.predecessors(true)
@@ -87,7 +87,7 @@ class ParametrizedHeaterHybridModel(
             return this.predecessors(true)
 
         val successors = mutableListOf<Transition<MutableSet<Rectangle>>>()
-        val model = hybridEncoder.decodeModel(this)
+        val model = hybridEncoder.getNodeState(this)
         if (model == "off") {
             val tempCoordinate = hybridEncoder.coordinate(this, 0)
             val tempVal = onModel.variables[0].thresholds[tempCoordinate]
@@ -98,7 +98,7 @@ class ParametrizedHeaterHybridModel(
                 )
             }
 
-            val valInModel = hybridEncoder.nodeInModel(this)
+            val valInModel = hybridEncoder.nodeInState(this)
             val modelSuccessors: Iterator<Transition<MutableSet<Rectangle>>>
             with (offRectangleOdeModel) {
                 modelSuccessors = valInModel.successors(true)
@@ -120,7 +120,7 @@ class ParametrizedHeaterHybridModel(
                 )
             }
 
-            val valInModel = hybridEncoder.nodeInModel(this)
+            val valInModel = hybridEncoder.nodeInState(this)
             val modelSuccessors: Iterator<Transition<MutableSet<Rectangle>>>
             with (onRectangleOdeModel) {
                 modelSuccessors = valInModel.successors(true)

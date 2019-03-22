@@ -25,7 +25,7 @@ class HeaterHybridModelTest {
         val thresholdTempCoordinate = heaterEncoder.encodeNode("on", intArrayOf(thresholdTemp))
         with (heater) {
             val jump = thresholdTempCoordinate.successors(true).next()
-            val decodedTarget = heaterEncoder.decodeModel(jump.target)
+            val decodedTarget = heaterEncoder.getNodeState(jump.target)
             assertEquals("off", decodedTarget)
         }
     }
@@ -36,7 +36,7 @@ class HeaterHybridModelTest {
         val thresholdTempCoordinate = heaterEncoder.encodeNode("off", intArrayOf(thresholdTemp))
         with (heater) {
             val jump = thresholdTempCoordinate.successors(true).next()
-            val decodedTarget = heaterEncoder.decodeModel(jump.target)
+            val decodedTarget = heaterEncoder.getNodeState(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
@@ -47,7 +47,7 @@ class HeaterHybridModelTest {
         val stableTempCoordinates = heaterEncoder.encodeNode("on", intArrayOf(stableTemp))
         with (heater) {
             val jump = stableTempCoordinates.successors(true).next()
-            val decodedTarget = heaterEncoder.decodeModel(jump.target)
+            val decodedTarget = heaterEncoder.getNodeState(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
@@ -60,7 +60,7 @@ class HeaterHybridModelTest {
             val successors = stableTempCoordinates.successors(true)
             val jump = successors.next()
 
-            val decodedTarget = heaterEncoder.decodeModel(jump.target)
+            val decodedTarget = heaterEncoder.getNodeState(jump.target)
 
             assertEquals("off", decodedTarget)
         }
@@ -106,12 +106,12 @@ class HeaterHybridModelTest {
 
     @Test
     fun hybridEncoder_idempotency() {
-        val onEncoder = heaterEncoder.modelEncoders["on"]
+        val onEncoder = heaterEncoder.stateModelEncoders["on"]
         assertNotNull(onEncoder)
         val node = onEncoder.encodeNode(intArrayOf(2))
 
         val hybridNode = heaterEncoder.encodeNode("on", intArrayOf(2))
-        assertEquals(node + heaterEncoder.statesPerModel, hybridNode)
+        assertEquals(node + heaterEncoder.nodesPerState, hybridNode)
 
         val decoded = heaterEncoder.decodeNode(hybridNode)
         assertEquals("on", decoded.first)
