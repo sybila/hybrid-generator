@@ -138,6 +138,29 @@ class HybridModel(
     }
 
 
+    override fun Formula.Atom.Transition.eval(): StateMap<MutableSet<Rectangle>> {
+        throw NotImplementedError()
+    }
+
+
+    /**
+     * Returns all nodes which do not fulfill some condition of their state position in the hybrid system.
+     */
+    fun getAllInvalidStates(): List<Int> {
+        val invalidStates = mutableListOf<Int>()
+
+        for (node in 0 until stateCount) {
+            val state = hybridEncoder.getNodeState(node)
+            val coordinates= hybridEncoder.getVariableCoordinates(node)
+            if (statesMap[state]!!.invariantConditions.any{!it.eval(coordinates)}) {
+                invalidStates.add(node)
+            }
+        }
+
+        return invalidStates
+    }
+
+
     private fun validateStateConsistency(state: HybridState) {
         val stateVariables = state.odeModel.variables
         if (stateVariables.count() != variables.count()) {
@@ -239,9 +262,4 @@ class HybridModel(
 
         return result
     }
-
-    override fun Formula.Atom.Transition.eval(): StateMap<MutableSet<Rectangle>> {
-        throw NotImplementedError()
-    }
-
 }
