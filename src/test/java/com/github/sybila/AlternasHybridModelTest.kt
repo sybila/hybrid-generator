@@ -69,12 +69,14 @@ class AlternasHybridModelTest(private val parameterName: String) {
                 out.println("Verified formula: $reachabilityFormula")
                 out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
-                r.entries().forEach { (state, params) ->
-                    val decoded =  hybridModel.hybridEncoder.decodeNode(state)
-                    val tVal = m1Model.variables[0].thresholds[(decoded.second[0])]
-                    val vVal = m1Model.variables[1].thresholds[(decoded.second[1])]
-                    val hVal = m1Model.variables[2].thresholds[(decoded.second[2])]
-                    out.println("State ${decoded.first}; Init state: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
+                r.entries().forEach { (node, params) ->
+                    val decoded =  hybridModel.hybridEncoder.decodeNode(node)
+                    val stateName = hybridModel.hybridEncoder.getNodeState(node)
+
+                    val tVal = m1Model.variables[0].thresholds[(decoded[0])]
+                    val vVal = m1Model.variables[1].thresholds[(decoded[1])]
+                    val hVal = m1Model.variables[2].thresholds[(decoded[2])]
+                    out.println("State $stateName; Init node: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
                 }
             }
 
@@ -95,12 +97,13 @@ class AlternasHybridModelTest(private val parameterName: String) {
                 out.println("Verified formula: $reachabilityFormula")
                 out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
-                r.entries().forEach { (state, params) ->
-                    val decoded =  hybridModel.hybridEncoder.decodeNode(state)
-                    val tVal = m1Model.variables[0].thresholds[(decoded.second[0])]
-                    val vVal = m1Model.variables[1].thresholds[(decoded.second[1])]
-                    val hVal = m1Model.variables[2].thresholds[(decoded.second[2])]
-                    out.println("State ${decoded.first}; Init state: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
+                r.entries().forEach { (node, params) ->
+                    val decoded =  hybridModel.hybridEncoder.decodeNode(node)
+                    val state = hybridModel.hybridEncoder.getNodeState(node)
+                    val tVal = m1Model.variables[0].thresholds[(decoded[0])]
+                    val vVal = m1Model.variables[1].thresholds[(decoded[1])]
+                    val hVal = m1Model.variables[2].thresholds[(decoded[2])]
+                    out.println("State $state; Init node: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
                 }
             }
 
@@ -121,12 +124,13 @@ class AlternasHybridModelTest(private val parameterName: String) {
                 out.println("Verified formula: $reachabilityFormula")
                 out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
-                r.entries().forEach { (state, params) ->
-                    val decoded =  hybridModel.hybridEncoder.decodeNode(state)
-                    val tVal = m1Model.variables[0].thresholds[(decoded.second[0])]
-                    val vVal = m1Model.variables[1].thresholds[(decoded.second[1])]
-                    val hVal = m1Model.variables[2].thresholds[(decoded.second[2])]
-                    out.println("State ${decoded.first}; Init state: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
+                r.entries().forEach { (node, params) ->
+                    val decoded =  hybridModel.hybridEncoder.decodeNode(node)
+                    val state = hybridModel.hybridEncoder.getNodeState(node)
+                    val tVal = m1Model.variables[0].thresholds[(decoded[0])]
+                    val vVal = m1Model.variables[1].thresholds[(decoded[1])]
+                    val hVal = m1Model.variables[2].thresholds[(decoded[2])]
+                    out.println("State $state; Init node: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
                 }
             }
 
@@ -147,12 +151,13 @@ class AlternasHybridModelTest(private val parameterName: String) {
                 out.println("Verified formula: $reachabilityFormula")
                 out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
-                r.entries().forEach { (state, params) ->
-                    val decoded =  hybridModel.hybridEncoder.decodeNode(state)
-                    val tVal = m1Model.variables[0].thresholds[(decoded.second[0])]
-                    val vVal = m1Model.variables[1].thresholds[(decoded.second[1])]
-                    val hVal = m1Model.variables[2].thresholds[(decoded.second[2])]
-                    out.println("State ${decoded.first}; Init state: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
+                r.entries().forEach { (node, params) ->
+                    val decoded =  hybridModel.hybridEncoder.decodeNode(node)
+                    val state = hybridModel.hybridEncoder.getNodeState(node)
+                    val tVal = m1Model.variables[0].thresholds[(decoded[0])]
+                    val vVal = m1Model.variables[1].thresholds[(decoded[1])]
+                    val hVal = m1Model.variables[2].thresholds[(decoded[2])]
+                    out.println("State $state; Init node: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
                 }
             }
 
@@ -173,12 +178,13 @@ class AlternasHybridModelTest(private val parameterName: String) {
                 out.println("Verified formula: $reachabilityFormula")
                 out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
-                r.entries().forEach { (state, params) ->
-                    val decoded =  hybridModel.hybridEncoder.decodeNode(state)
-                    val tVal = m1Model.variables[0].thresholds[(decoded.second[0])]
-                    val vVal = m1Model.variables[1].thresholds[(decoded.second[1])]
-                    val hVal = m1Model.variables[2].thresholds[(decoded.second[2])]
-                    out.println("State ${decoded.first}; Init state: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
+                r.entries().forEach { (node, params) ->
+                    val decoded =  hybridModel.hybridEncoder.decodeNode(node)
+                    val state = hybridModel.hybridEncoder.getNodeState(node)
+                    val tVal = m1Model.variables[0].thresholds[(decoded[0])]
+                    val vVal = m1Model.variables[1].thresholds[(decoded[1])]
+                    val hVal = m1Model.variables[2].thresholds[(decoded[2])]
+                    out.println("State $state; Init node: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
                 }
             }
 

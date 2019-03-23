@@ -150,7 +150,8 @@ class HybridModelTest {
     }
 
     private fun Int.stateString(encoder: HybridNodeEncoder): String {
-        val (mode, coords) = encoder.decodeNode(this)
+        val coords = encoder.decodeNode(this)
+        val mode = encoder.getNodeState(this)
         return "$this:$mode:${Arrays.toString(coords)}"
     }
 
@@ -197,9 +198,10 @@ class HybridModelTest {
         val hybridModel = HybridModel(solver, listOf(onState, offState), listOf(transition1, transition2))
         SequentialChecker(hybridModel).use { checker ->
             val r = checker.verify(formula)
-            r.entries().forEach { (state, params) ->
-                val decoded = hybridModel.hybridEncoder.decodeNode(state)
-                println("State ${decoded.first}; temp: ${decoded.second[0]}: ${params.first()}")
+            r.entries().forEach { (node, params) ->
+                val decoded = hybridModel.hybridEncoder.decodeNode(node)
+                val state = hybridModel.hybridEncoder.getNodeState(node)
+                println("State $state; temp: ${decoded[0]}: ${params.first()}")
             }
             assertTrue(true)
         }

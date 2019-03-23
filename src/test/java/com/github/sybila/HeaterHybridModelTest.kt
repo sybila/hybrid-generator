@@ -67,8 +67,9 @@ class HeaterHybridModelTest {
     }
 
     private fun Int.stateString(encoder: HybridNodeEncoder): String {
-        val (mode, coords) = encoder.decodeNode(this)
-        return "$this:$mode:${Arrays.toString(coords)}"
+        val mode = encoder.decodeNode(this)
+        val state = encoder.getNodeState(this)
+        return "$this:$state:${Arrays.toString(mode)}"
     }
 
     @Test
@@ -102,20 +103,6 @@ class HeaterHybridModelTest {
 
             assertEquals(successorGraph.toSet(), predecessorGraph.toSet())
         }
-    }
-
-    @Test
-    fun hybridEncoder_idempotency() {
-        val onEncoder = heaterEncoder.stateModelEncoders["on"]
-        assertNotNull(onEncoder)
-        val node = onEncoder.encodeNode(intArrayOf(2))
-
-        val hybridNode = heaterEncoder.encodeNode("on", intArrayOf(2))
-        assertEquals(node + heaterEncoder.nodesPerState, hybridNode)
-
-        val decoded = heaterEncoder.decodeNode(hybridNode)
-        assertEquals("on", decoded.first)
-        assertEquals(2, decoded.second[0])
     }
 
     @Test
@@ -191,9 +178,10 @@ class HeaterHybridModelTest {
         SequentialChecker(parHeater).use { checker ->
             val r = checker.verify(HUCTLParser().formula("EG (temp < 18 && temp > 3)"))
 
-            r.entries().forEach { (state, params) ->
-                val decoded =  parHeater.hybridEncoder.decodeNode(state)
-                println("State ${decoded.first}; temp: ${decoded.second[0]}: ${params.first()}")
+            r.entries().forEach { (node, params) ->
+                val decoded =  parHeater.hybridEncoder.decodeNode(node)
+                val state = parHeater.hybridEncoder.getNodeState(node)
+                println("State $state; temp: ${decoded[0]}: ${params.first()}")
             }
             assertTrue(true)
         }

@@ -243,7 +243,7 @@ class HybridModel(
 
         val shouldEqual = this.cmp == CompareOp.EQ
         val result = HashStateMap(ff)
-        val stateIndices = hybridEncoder.getNodesOfModelState(verifiedStateName)
+        val stateIndices = hybridEncoder.getNodesOfState(verifiedStateName)
 
         if (shouldEqual) {
             for (state in stateIndices) {

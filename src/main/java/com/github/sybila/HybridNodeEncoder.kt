@@ -6,12 +6,12 @@ import java.util.Collections.max
 class HybridNodeEncoder(
         models: Map<String, HybridState>
 ) {
-    internal val stateModelEncoders = hashMapOf(
+    private val stateModelEncoders = hashMapOf(
             *(models.map { entry ->
                 Pair(entry.key, NodeEncoder(entry.value.odeModel))
             }.toTypedArray())
     )
-    internal val nodesPerState = max(stateModelEncoders.map{ encoder -> encoder.value.stateCount})!!
+    private val nodesPerState = max(stateModelEncoders.map{ encoder -> encoder.value.stateCount})!!
     private val stateNamesOrder = listOf(*(models.keys.toTypedArray()))
     private val variableNamesOrder = listOf(*(models.values.first().odeModel.variables.map{it.name}.toTypedArray()))
     private val variables = models.values.first().odeModel.variables.associateBy({it.name}, {it})
@@ -30,12 +30,11 @@ class HybridNodeEncoder(
 
 
     /**
-     * Decode given node into a state name and array of it's coordinates.
+     * Decode given node into array of it's coordinates.
      */
-    fun decodeNode(node: Int): Pair<String, IntArray> {
+    fun decodeNode(node: Int): IntArray {
         val modelKey = getNodeState(node)
-        val coordinatesInModel = stateModelEncoders[modelKey]!!.decodeNode(node % nodesPerState)
-        return Pair(modelKey, coordinatesInModel)
+        return stateModelEncoders[modelKey]!!.decodeNode(node % nodesPerState)
     }
 
 
@@ -44,7 +43,7 @@ class HybridNodeEncoder(
      */
     fun getNodeState(node: Int): String {
         val modelIndex = node / nodesPerState
-        return this.stateNamesOrder[modelIndex]
+        return stateNamesOrder[modelIndex]
     }
 
 
@@ -85,7 +84,7 @@ class HybridNodeEncoder(
     /**
      * Returns all nodes of the specified state.
      */
-    fun getNodesOfModelState(modelKey: String): IntRange {
+    fun getNodesOfState(modelKey: String): IntRange {
         val modelIndex = stateNamesOrder.indexOf(modelKey)
         val beginning =  modelIndex * nodesPerState
         val end = beginning + nodesPerState
@@ -123,7 +122,7 @@ class HybridNodeEncoder(
         // Generate all coordinate combinations of the dynamic variables
         val dynamicVariableRanges = dynamicVariables.map { 0 until variables[it]!!.thresholds.size - 1 }
         val dynamicCoordinateCombinations = dynamicVariableRanges.fold(
-                emptyList<List<Int>>()) { x, y -> crossAppend(x, y)}
+                listOf<List<Int>>(emptyList())) { x, y -> crossAppend(x, y)}
 
         val possibleStates = mutableListOf<Int>()
         for (combination in dynamicCoordinateCombinations) {
