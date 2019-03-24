@@ -16,31 +16,36 @@ import kotlin.test.assertTrue
 @RunWith(Parameterized::class)
 class AlternasHybridModelTest(private val parameterName: String) {
     private val solver = RectangleSolver(Rectangle(doubleArrayOf(-500.0, 500.0)))
-    private val m1Model = Parser().parse(Paths.get("resources", "alternas", "parametrized$parameterName", "M1.bio").toFile()).computeApproximation(fast = false, cutToRange = false)
-    private val m2Model = Parser().parse(Paths.get("resources", "alternas", "parametrized$parameterName", "M2.bio").toFile()).computeApproximation(fast = false, cutToRange = false)
-    private val m3Model = Parser().parse(Paths.get("resources", "alternas", "parametrized$parameterName", "M3.bio").toFile()).computeApproximation(fast = false, cutToRange = false)
-    private val m4Model = Parser().parse(Paths.get("resources", "alternas", "parametrized$parameterName", "M4.bio").toFile()).computeApproximation(fast = false, cutToRange = false)
+    private val dataPath = Paths.get("resources", "alternas", "parametrized$parameterName", "data.bio")
+    private val m1Path = Paths.get("resources", "alternas", "parametrized$parameterName", "M1.bio")
+    private val m2Path = Paths.get("resources", "alternas", "parametrized$parameterName", "M2.bio")
+    private val m3Path = Paths.get("resources", "alternas", "parametrized$parameterName", "M3.bio")
+    private val m4Path = Paths.get("resources", "alternas", "parametrized$parameterName", "M4.bio")
 
-    private val variableOrder = m1Model.variables.map{ it.name }.toTypedArray()
+    private val odeModels = generateOdeModels(dataPath, listOf(m1Path, m2Path, m3Path, m4Path))
 
-    private val m1State = HybridState("m1", m1Model, listOf(ConstantHybridCondition(m1Model.variables[0], 1.0, false, variableOrder), ConstantHybridCondition(m1Model.variables[1], 0.05, true, variableOrder)))
-    private val m2State = HybridState("m2", m1Model, listOf(ConstantHybridCondition(m2Model.variables[0], 1.0, false, variableOrder), ConstantHybridCondition(m2Model.variables[1], 0.1, false, variableOrder)))
-    private val m3State = HybridState("m3", m1Model, listOf(ConstantHybridCondition(m3Model.variables[0], 300.0, false, variableOrder), ConstantHybridCondition(m3Model.variables[1], 0.05, true, variableOrder)))
-    private val m4State = HybridState("m4", m1Model, listOf(ConstantHybridCondition(m4Model.variables[0], 300.0, false, variableOrder), ConstantHybridCondition(m4Model.variables[1], 0.1, false, variableOrder)))
+    private val variableOrder = odeModels.first().variables.map{ it.name }.toTypedArray()
 
-    private val t12 = HybridTransition("m1", "m2", ConstantHybridCondition(m1Model.variables[1], 0.1, false, variableOrder), emptyMap(), emptyList())
-    private val t13 = HybridTransition("m1", "m3", ConstantHybridCondition(m1Model.variables[0], 0.95, true, variableOrder), emptyMap(), emptyList())
-    //private val t11 = HybridTransition("m1", "m1", ConstantHybridCondition(m1Model.variables[0], 300.0, true), mapOf(Pair("t", 0.0)), m1Model.variables)
+    private val m1State = HybridState("m1", odeModels[0], listOf(ConstantHybridCondition(odeModels[0].variables[0], 1.0, false, variableOrder), ConstantHybridCondition(odeModels[0].variables[1], 0.05, true, variableOrder)))
+    private val m2State = HybridState("m2", odeModels[1], listOf(ConstantHybridCondition(odeModels[1].variables[0], 1.0, false, variableOrder), ConstantHybridCondition(odeModels[1].variables[1], 0.1, false, variableOrder)))
+    private val m3State = HybridState("m3", odeModels[2], listOf(ConstantHybridCondition(odeModels[2].variables[0], 300.0, false, variableOrder), ConstantHybridCondition(odeModels[2].variables[1], 0.05, true, variableOrder)))
+    private val m4State = HybridState("m4", odeModels[3], listOf(ConstantHybridCondition(odeModels[3].variables[0], 300.0, false, variableOrder), ConstantHybridCondition(odeModels[3].variables[1], 0.1, false, variableOrder)))
 
-    private val t21 = HybridTransition("m2", "m1", ConstantHybridCondition(m1Model.variables[1], 0.05, true, variableOrder), emptyMap(), emptyList())
-    private val t24 = HybridTransition("m2", "m4", ConstantHybridCondition(m1Model.variables[0], 0.95, true, variableOrder), emptyMap(), emptyList())
-    //private val t22 = HybridTransition("m2", "m2", ConstantHybridCondition(m1Model.variables[0], 300.0, true), mapOf(Pair("t", 0.0)), m2Model.variables)
+    private val tVariable = odeModels.first().variables[0]
+    private val vVariable = odeModels.first().variables[1]
+    private val hVariable = odeModels.first().variables[2]
 
-    private val t34 = HybridTransition("m3", "m4", ConstantHybridCondition(m1Model.variables[1], 0.1, false, variableOrder), emptyMap(), emptyList())
-    private val t31 = HybridTransition("m3", "m1", ConstantHybridCondition(m1Model.variables[0], 300.0, true, variableOrder), mapOf(Pair("t", 0.0)), m3Model.variables)
+    private val t12 = HybridTransition("m1", "m2", ConstantHybridCondition(vVariable, 0.1, false, variableOrder), emptyMap(), emptyList())
+    private val t13 = HybridTransition("m1", "m3", ConstantHybridCondition(tVariable, 0.95, true, variableOrder), emptyMap(), emptyList())
 
-    private val t43 = HybridTransition("m4", "m3", ConstantHybridCondition(m1Model.variables[1], 0.1, false, variableOrder), emptyMap(), emptyList())
-    private val t42 = HybridTransition("m4", "m2", ConstantHybridCondition(m1Model.variables[0], 300.0, true, variableOrder), mapOf(Pair("t", 0.0)), m4Model.variables)
+    private val t21 = HybridTransition("m2", "m1", ConstantHybridCondition(vVariable, 0.05, true, variableOrder), emptyMap(), emptyList())
+    private val t24 = HybridTransition("m2", "m4", ConstantHybridCondition(tVariable, 0.95, true, variableOrder), emptyMap(), emptyList())
+
+    private val t34 = HybridTransition("m3", "m4", ConstantHybridCondition(vVariable, 0.1, false, variableOrder), emptyMap(), emptyList())
+    private val t31 = HybridTransition("m3", "m1", ConstantHybridCondition(tVariable, 300.0, true, variableOrder), mapOf(Pair("t", 0.0)), odeModels[2].variables)
+
+    private val t43 = HybridTransition("m4", "m3", ConstantHybridCondition(vVariable, 0.1, false, variableOrder), emptyMap(), emptyList())
+    private val t42 = HybridTransition("m4", "m2", ConstantHybridCondition(tVariable, 300.0, true, variableOrder), mapOf(Pair("t", 0.0)), odeModels[3].variables)
 
     private val hybridModel = HybridModel(solver, listOf(m1State, m2State, m3State, m4State), listOf(t12, t13, t21, t24, t34, t31, t43, t42))
 
@@ -72,10 +77,9 @@ class AlternasHybridModelTest(private val parameterName: String) {
                 r.entries().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
                     val stateName = hybridModel.hybridEncoder.getNodeState(node)
-
-                    val tVal = m1Model.variables[0].thresholds[(decoded[0])]
-                    val vVal = m1Model.variables[1].thresholds[(decoded[1])]
-                    val hVal = m1Model.variables[2].thresholds[(decoded[2])]
+                    val tVal = tVariable.thresholds[(decoded[0])]
+                    val vVal = vVariable.thresholds[(decoded[1])]
+                    val hVal = hVariable.thresholds[(decoded[2])]
                     out.println("State $stateName; Init node: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
                 }
             }
@@ -100,9 +104,9 @@ class AlternasHybridModelTest(private val parameterName: String) {
                 r.entries().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
                     val state = hybridModel.hybridEncoder.getNodeState(node)
-                    val tVal = m1Model.variables[0].thresholds[(decoded[0])]
-                    val vVal = m1Model.variables[1].thresholds[(decoded[1])]
-                    val hVal = m1Model.variables[2].thresholds[(decoded[2])]
+                    val tVal = tVariable.thresholds[(decoded[0])]
+                    val vVal = vVariable.thresholds[(decoded[1])]
+                    val hVal = hVariable.thresholds[(decoded[2])]
                     out.println("State $state; Init node: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
                 }
             }
@@ -127,9 +131,9 @@ class AlternasHybridModelTest(private val parameterName: String) {
                 r.entries().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
                     val state = hybridModel.hybridEncoder.getNodeState(node)
-                    val tVal = m1Model.variables[0].thresholds[(decoded[0])]
-                    val vVal = m1Model.variables[1].thresholds[(decoded[1])]
-                    val hVal = m1Model.variables[2].thresholds[(decoded[2])]
+                    val tVal = tVariable.thresholds[(decoded[0])]
+                    val vVal = vVariable.thresholds[(decoded[1])]
+                    val hVal = hVariable.thresholds[(decoded[2])]
                     out.println("State $state; Init node: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
                 }
             }
@@ -154,9 +158,9 @@ class AlternasHybridModelTest(private val parameterName: String) {
                 r.entries().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
                     val state = hybridModel.hybridEncoder.getNodeState(node)
-                    val tVal = m1Model.variables[0].thresholds[(decoded[0])]
-                    val vVal = m1Model.variables[1].thresholds[(decoded[1])]
-                    val hVal = m1Model.variables[2].thresholds[(decoded[2])]
+                    val tVal = tVariable.thresholds[(decoded[0])]
+                    val vVal = vVariable.thresholds[(decoded[1])]
+                    val hVal = hVariable.thresholds[(decoded[2])]
                     out.println("State $state; Init node: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
                 }
             }
@@ -181,9 +185,9 @@ class AlternasHybridModelTest(private val parameterName: String) {
                 r.entries().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
                     val state = hybridModel.hybridEncoder.getNodeState(node)
-                    val tVal = m1Model.variables[0].thresholds[(decoded[0])]
-                    val vVal = m1Model.variables[1].thresholds[(decoded[1])]
-                    val hVal = m1Model.variables[2].thresholds[(decoded[2])]
+                    val tVal = tVariable.thresholds[(decoded[0])]
+                    val vVal = vVariable.thresholds[(decoded[1])]
+                    val hVal = hVariable.thresholds[(decoded[2])]
                     out.println("State $state; Init node: t:$tVal v:$vVal h:$hVal ; $parameterName: ${params.first()}")
                 }
             }
