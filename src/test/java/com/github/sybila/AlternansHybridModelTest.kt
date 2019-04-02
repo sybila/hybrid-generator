@@ -3,8 +3,6 @@ import com.github.sybila.checker.SequentialChecker
 import com.github.sybila.huctl.HUCTLParser
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleSolver
-import com.github.sybila.ode.model.Parser
-import com.github.sybila.ode.model.computeApproximation
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized

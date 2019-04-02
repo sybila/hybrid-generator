@@ -23,9 +23,10 @@ class HybridModel(
         private val transitions: List<HybridTransition>
 ) : Model<MutableSet<Rectangle>>, Solver<MutableSet<Rectangle>> by solver {
     private val statesMap = states.associateBy({it.label}, {it})
-    private val variables: List<OdeModel.Variable> = states.first().odeModel.variables
+    internal val variables: List<OdeModel.Variable> = states.first().odeModel.variables
     private val variableOrder = variables.map{ it.name }.toTypedArray()
     internal val hybridEncoder = HybridNodeEncoder(statesMap)
+    internal val parameters = states.first().odeModel.parameters
 
     init {
         for (s in states) {

@@ -1,5 +1,5 @@
 Verified formula: (EF state == m1) && (EF state == m2) && (EF state == m3) && (EF state == m4)
-Elapsed time [mm:ss:SSS]: 00:01:045
+Elapsed time [mm:ss:SSS]: 00:01:335
 State m1; Init node: t:0.0 v:0.15 h:0.5 ; Stimulus: [-500.0, 0.024999900000000002]
 State m1; Init node: t:0.05 v:0.15 h:0.5 ; Stimulus: [-500.0, 0.024999900000000002]
 State m1; Init node: t:0.1 v:0.15 h:0.5 ; Stimulus: [-500.0, 0.024999900000000002]

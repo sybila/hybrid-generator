@@ -7,6 +7,20 @@ interface HybridCondition {
     fun eval(variableCoordinates: IntArray): Boolean
 }
 
+class ConjuctionHybridCondition(
+        private val conditions: List<HybridCondition>
+) : HybridCondition {
+    init {
+        if (conditions.isEmpty()) {
+            throw java.lang.IllegalArgumentException("Conditions can't be empty")
+        }
+    }
+
+    override fun eval(variableCoordinates: IntArray): Boolean {
+        return conditions.all { it.eval(variableCoordinates) }
+    }
+}
+
 class ConstantHybridCondition(
         private val variable: OdeModel.Variable,
         private val threshold: Double,

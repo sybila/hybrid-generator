@@ -1,5 +1,5 @@
 Verified formula: (state == m3) && AG (EF state == m3)
-Elapsed time [mm:ss:SSS]: 00:01:847
+Elapsed time [mm:ss:SSS]: 00:01:551
 State m3; Init node: t:0.4 v:0.45 h:0.0 ; Stimulus: [0.0151666015, 500.0]
 State m3; Init node: t:0.35 v:0.45 h:0.0 ; Stimulus: [0.0151666015, 500.0]
 State m3; Init node: t:0.5 v:0.45 h:0.0 ; Stimulus: [0.0151666015, 500.0]
