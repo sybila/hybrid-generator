@@ -1,2 +1,2 @@
-Verified formula: v > 0 && x < 0.05 && y < 0.05 && state == jump && !(EF state == bad)
-Elapsed time [mm:ss:SSS]: 00:12:253
+Verified formula: v > 0 && x < 0.00 && y < 0.00 && state == jump && !(EF state == bad)
+Elapsed time [mm:ss:SSS]: 00:13:358

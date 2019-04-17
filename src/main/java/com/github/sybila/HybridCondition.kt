@@ -7,7 +7,7 @@ interface HybridCondition {
     fun eval(variableCoordinates: IntArray): Boolean
 }
 
-class ConjuctionHybridCondition(
+class ConjunctionHybridCondition(
         private val conditions: List<HybridCondition>
 ) : HybridCondition {
     init {
@@ -28,11 +28,6 @@ class ConstantHybridCondition(
         variableCoordinateOrder: Array<String>
 ) : HybridCondition {
     private val variableIndex = variableCoordinateOrder.indexOf(variable.name)
-    init {
-        if (!variable.thresholds.contains(threshold)) {
-            throw IllegalArgumentException("The variable ${variable.name} doesn't have specified threshold $threshold")
-        }
-    }
 
     override fun eval(variableCoordinates: IntArray): Boolean {
         val thresholdIndex = variableCoordinates[variableIndex]

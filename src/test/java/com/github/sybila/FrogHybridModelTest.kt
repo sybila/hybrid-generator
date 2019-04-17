@@ -30,7 +30,7 @@ class FrogHybridModelTest {
     private val boxStart = ConstantHybridCondition(xVariable, 1.0, true, variableOrder)
     private val boxEnd = ConstantHybridCondition(xVariable, 1.5, false, variableOrder)
     private val boxHeight = ConstantHybridCondition(yVariable, 0.5, false, variableOrder)
-    private val inBox = ConjuctionHybridCondition(listOf(boxStart, boxEnd, boxHeight))
+    private val inBox = ConjunctionHybridCondition(listOf(boxStart, boxEnd, boxHeight))
 
     private val jumpState = HybridState("jump", odeModels[0], listOf(positiveVelocity))
     private val fallState = HybridState("fall", odeModels[1], listOf(negativeVelocity))
@@ -60,7 +60,7 @@ class FrogHybridModelTest {
 
     @Test
     fun synthesis_bad_state_unreachable() {
-        val badUnreachable = "v > 0 && x < 0.05 && y < 0.05 && state == jump && !(EF state == bad)"
+        val badUnreachable = "v > 0 && x < 0.00 && y < 0.00 && state == jump && !(EF state == bad)"
 
         Checker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()
@@ -92,7 +92,7 @@ class FrogHybridModelTest {
 
     @Test
     fun synthesis_bad_state_reachable() {
-        val badUnreachable = "v > 0 && x < 0.05 && y < 0.05 && state == jump && (EF state == bad)"
+        val badUnreachable = "v > 0 && x < 0.00 && y < 0.00 && state == jump && (EF state == bad)"
 
         Checker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()

@@ -9,18 +9,17 @@ import com.github.sybila.huctl.HUCTLParser
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleSolver
 import com.github.sybila.ode.model.Parser
-import com.github.sybila.ode.model.computeApproximation
 import org.junit.Test
-import java.io.File
+import java.nio.file.Paths
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class HybridModelTest {
     private val solver = RectangleSolver(Rectangle(doubleArrayOf()))
-    private val onModel = Parser().parse(File("resources", "HeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
-    private val offModel = Parser().parse(File("resources", "HeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
-    private val variableOrder = onModel.variables.map{it -> it.name}.toTypedArray()
+    private val onModel = Parser().parse(Paths.get("resources", "hybridModelTest", "On.bio").toFile())
+    private val offModel = Parser().parse(Paths.get("resources", "hybridModelTest", "Off.bio").toFile())
+    private val variableOrder = onModel.variables.map{ it.name}.toTypedArray()
     private val invariants = listOf(ConstantHybridCondition(onModel.variables[0], 85.0, false, variableOrder), ConstantHybridCondition(offModel.variables[0], 25.0, true, variableOrder))
     private val onState = HybridState("on", onModel, invariants)
     private val offState = HybridState("off", offModel, invariants)
@@ -123,7 +122,7 @@ class HybridModelTest {
     @Test
     fun checker_atom() {
         Checker(hybridModel).use { checker ->
-            val formula = Formula.Atom.Float(Expression.Variable("temp"), CompareOp.LT, Expression.Constant(10.0))
+            val formula = Formula.Atom.Float(Expression.Variable("x"), CompareOp.LT, Expression.Constant(10.0))
             val r = checker.verify(formula)
             assertTrue(r.isNotEmpty())
         }
@@ -132,7 +131,7 @@ class HybridModelTest {
 
     @Test
     fun checker_lowBound() {
-        val formula = HUCTLParser().formula("EG temp > 10.0")
+        val formula = HUCTLParser().formula("EG x > 10.0")
 
         Checker(hybridModel).use { checker ->
             val r = checker.verify(formula)
@@ -142,7 +141,7 @@ class HybridModelTest {
 
     @Test
     fun checker_highBound() {
-        val formula = HUCTLParser().formula("EG temp < 90.0")
+        val formula = HUCTLParser().formula("EG x < 90.0")
         Checker(hybridModel).use { checker ->
             val r = checker.verify(formula)
             assertTrue(r.isNotEmpty())
@@ -160,10 +159,11 @@ class HybridModelTest {
         with(hybridModel) {
             val successorGraph = ArrayList<Pair<Int, Int>>()
             val predecessorGraph = ArrayList<Pair<Int, Int>>()
-
             for (s in 0 until stateCount) {
+                /*
                 kotlin.io.println("Successors: State ${s.stateString(hybridEncoder)} goes to ${s.successors(true).asSequence().toList()}")
                 kotlin.io.println("Predecessors: State ${s.stateString(hybridEncoder)} comes from ${s.predecessors(true).asSequence().toList()}")
+                */
                 s.successors(true).forEach {
                     successorGraph.add(s to it.target)
                 }
@@ -171,7 +171,7 @@ class HybridModelTest {
                     predecessorGraph.add(it.target to s)
                 }
             }
-
+            /*
             for (pair in successorGraph) {
                 kotlin.test.assertTrue("$pair not in predecessors graph") { pair in predecessorGraph }
             }
@@ -179,17 +179,17 @@ class HybridModelTest {
             for (pair in predecessorGraph) {
                 kotlin.test.assertTrue("$pair not in successors graph") { pair in successorGraph }
             }
-
+            */
             kotlin.test.assertEquals(successorGraph.toSet(), predecessorGraph.toSet())
         }
     }
 
     @Test
     fun checker_parameterSynthesis() {
-        val formula = HUCTLParser().formula("EG (temp < 17 && temp > 4)")
+        val formula = HUCTLParser().formula("EG (x < 17 && x > 4)")
         val solver = RectangleSolver(Rectangle(doubleArrayOf(-2.0, 2.0)))
-        val onModel = Parser().parse(File("resources", "ParametrizedHeaterOnModel.bio")).computeApproximation(fast = false, cutToRange = false)
-        val offModel = Parser().parse(File("resources", "ParametrizedHeaterOffModel.bio")).computeApproximation(fast = false, cutToRange = false)
+        val onModel = Parser().parse(Paths.get("resources", "hybridModelTest", "ParametrizedOn.bio").toFile())
+        val offModel = Parser().parse(Paths.get("resources", "hybridModelTest", "ParametrizedOff.bio").toFile())
         val variableOrder = onModel.variables.map{it -> it.name}.toTypedArray()
         val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 18.0, false, variableOrder)))
         val offState = HybridState("off", offModel, listOf(ConstantHybridCondition(offModel.variables[0], 3.0, true, variableOrder)))
@@ -198,12 +198,14 @@ class HybridModelTest {
         val hybridModel = HybridModel(solver, listOf(onState, offState), listOf(transition1, transition2))
         SequentialChecker(hybridModel).use { checker ->
             val r = checker.verify(formula)
+            /*
             r.entries().forEach { (node, params) ->
                 val decoded = hybridModel.hybridEncoder.decodeNode(node)
                 val state = hybridModel.hybridEncoder.getNodeState(node)
-                println("State $state; temp: ${decoded[0]}: ${params.first()}")
+                println("State $state; x: ${decoded[0]}: ${params.first()}")
             }
-            assertTrue(true)
+            */
+            assertTrue(r.entries().hasNext())
         }
     }
 }
