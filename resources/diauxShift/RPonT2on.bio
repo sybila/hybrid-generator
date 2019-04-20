@@ -1,0 +1,3 @@
+EQ: T_2 = k_T2 * R * hillp(M, K_T2, 1, 0, 1) - (kd_T2 * T_2)
+EQ: M = k_cat1 * T_1 * hillp(C_1, K_C1, 1, 0, 1) + (k_cat2 * T_2 * hillp(C_2, K_C2, 1, 0, 1)) - (k_T1 * R * hillp(M, K_T1, 1, 0, 1)) - (k_T2 * R * hillp(M, K_T2, 1, 0, 1)) - (k_R * R * hillp(M, K_R, 1, 0, 1))
+EQ: RP = k_RP * R * hillp(M, K_RP, 1, 0, 1) - (kd_RP * RP)

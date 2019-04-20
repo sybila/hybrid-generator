@@ -1,6 +1,7 @@
 package com.github.sybila
 
 import com.github.sybila.ode.generator.NodeEncoder
+import java.lang.IllegalArgumentException
 import java.util.Collections.max
 
 class HybridNodeEncoder(
@@ -18,6 +19,11 @@ class HybridNodeEncoder(
 
     val nodeCount: Int = models.count() * nodesPerState
 
+    init {
+        if (models.count() * nodesPerState > Int.MAX_VALUE) {
+            throw IllegalArgumentException("Hybrid model is too big for integer encoding!")
+        }
+    }
 
     /**
      * Encode given state name and coordinate array into a single number.
