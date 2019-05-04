@@ -33,10 +33,10 @@ class DiauxShiftModelTest {
     private val rpAboveThreshold = ConstantHybridCondition(rpVariable, 1.0, true, variableOrder)
     private val rpBelowThreshold = ConstantHybridCondition(rpVariable, 1.01, false, variableOrder)
 
-    private val offOffState = HybridState("offOff", odeModels[0], listOf(c1BelowThreshold, rpAboveThreshold))
-    private val offOnState = HybridState("offOn", odeModels[1], listOf(c1BelowThreshold, rpBelowThreshold))
-    private val onOffState = HybridState("onOff", odeModels[2], listOf(c1BelowThreshold, rpBelowThreshold))
-    private val onOnState = HybridState("onOn", odeModels[3], listOf(c1AboveThreshold, rpBelowThreshold))
+    private val offOffState = HybridMode("offOff", odeModels[0], ConjunctionHybridCondition(listOf(c1BelowThreshold, rpAboveThreshold)))
+    private val offOnState = HybridMode("offOn", odeModels[1], ConjunctionHybridCondition(listOf(c1BelowThreshold, rpBelowThreshold)))
+    private val onOffState = HybridMode("onOff", odeModels[2], ConjunctionHybridCondition(listOf(c1BelowThreshold, rpBelowThreshold)))
+    private val onOnState = HybridMode("onOn", odeModels[3], ConjunctionHybridCondition(listOf(c1AboveThreshold, rpBelowThreshold)))
 
     private val toOffOnCondition = ConjunctionHybridCondition(listOf(c1BelowThreshold, rpBelowThreshold))
     private val tOffOffToOffOn = HybridTransition("offOff", "offOn", toOffOnCondition, emptyMap(), emptyList())
@@ -83,7 +83,7 @@ class DiauxShiftModelTest {
 
                 r[0].entries().asSequence().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
-                    val stateName = hybridModel.hybridEncoder.getNodeState(node)
+                    val stateName = hybridModel.hybridEncoder.getModeOfNode(node)
                     val c1Val = c1Variable.thresholds[(decoded[0])]
                     val c2Val = c2Variable.thresholds[decoded[1]]
                     val mVal = mVariable.thresholds[decoded[2]]
@@ -112,7 +112,7 @@ class DiauxShiftModelTest {
         val solver = RectangleSolver(Rectangle(doubleArrayOf()))
         val hybridModel = HybridModel(solver, states, transitions)
 
-        val offOffUnreachable = "C_2 > 29 && C_2 < 31 && M > 39 && M < 41 && RP < 0.4 && T_1 < 5 && T_2 < 2 && R > 2 && R < 4 && state == onOn && (AG state != offOff)"
+        val offOffUnreachable = "C_2 > 29 && C_2 < 31 && M > 39 && M < 41 && RP < 0.4 && T_1 < 5 && T_2 < 2 && R > 2 && R < 4 && mode == onOn && (AG mode != offOff)"
 
         Checker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()

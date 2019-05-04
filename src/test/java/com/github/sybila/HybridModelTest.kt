@@ -13,6 +13,7 @@ import org.junit.Test
 import java.nio.file.Paths
 import java.util.*
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class HybridModelTest {
@@ -20,103 +21,147 @@ class HybridModelTest {
     private val onModel = Parser().parse(Paths.get("resources", "hybridModelTest", "On.bio").toFile())
     private val offModel = Parser().parse(Paths.get("resources", "hybridModelTest", "Off.bio").toFile())
     private val variableOrder = onModel.variables.map{ it.name}.toTypedArray()
-    private val invariants = listOf(ConstantHybridCondition(onModel.variables[0], 85.0, false, variableOrder), ConstantHybridCondition(offModel.variables[0], 25.0, true, variableOrder))
-    private val onState = HybridState("on", onModel, invariants)
-    private val offState = HybridState("off", offModel, invariants)
-    private val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 80.0, true, variableOrder), emptyMap(), emptyList())
+    private val invariants = ConjunctionHybridCondition(listOf(ConstantHybridCondition(onModel.variables[0], 85.0, false, variableOrder), ConstantHybridCondition(offModel.variables[0], 25.0, true, variableOrder)))
+    private val onState = HybridMode("on", onModel, invariants)
+    private val offState = HybridMode("off", offModel, invariants)
+    private val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 75.0, true, variableOrder), emptyMap(), emptyList())
     private val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 30.0, false, variableOrder), emptyMap(), emptyList())
 
     private val hybridModel = HybridModel(solver, listOf(onState, offState), listOf(transition1, transition2))
     private val hybridEncoder = hybridModel.hybridEncoder
 
+    private val thresholdsSize = onModel.variables[0].thresholds.size
+
     @Test
-    fun successor_jumpFromOnToOff_jumpsCorrectly() {
-        val thresholdTemp = onModel.variables[0].thresholds.size - 4
+    fun successors_jumpFromOnToOff_jumpsCorrectly() {
+        val thresholdTemp = thresholdsSize - 4
         val thresholdTempCoordinate = hybridEncoder.encodeNode("on", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.successors(true).next()
-            val decodedTarget = hybridEncoder.getNodeState(jump.target)
+            val decodedTarget = hybridEncoder.getModeOfNode(jump.target)
             assertEquals("off", decodedTarget)
         }
     }
 
     @Test
-    fun successor_jumpFromOffToOn_jumpsCorrectly() {
+    fun successors_jumpFromOffToOn_jumpsCorrectly() {
         val thresholdTemp = 6
         val thresholdTempCoordinate = hybridEncoder.encodeNode("off", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.successors(true).next()
-            val decodedTarget = hybridEncoder.getNodeState(jump.target)
+            val decodedTarget = hybridEncoder.getModeOfNode(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
 
     @Test
-    fun successor_jumpFromOnToOn_jumpsCorrectly() {
-        val stableTemp = onModel.variables[0].thresholds.size / 2
+    fun successors_jumpFromOnToOn_jumpsCorrectly() {
+        val stableTemp = thresholdsSize / 2
         val stableTempCoordinates = hybridEncoder.encodeNode("on", intArrayOf(stableTemp))
         with (hybridModel) {
             val jump = stableTempCoordinates.successors(true).next()
-            val decodedTarget = hybridEncoder.getNodeState(jump.target)
+            val decodedTarget = hybridEncoder.getModeOfNode(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
 
     @Test
-    fun successor_jumpFromOffToOff_jumpsCorrectly() {
-        val stableTemp = onModel.variables[0].thresholds.size / 2
+    fun successors_jumpFromOffToOff_jumpsCorrectly() {
+        val stableTemp = thresholdsSize / 2
         val stableTempCoordinates = hybridEncoder.encodeNode("off", intArrayOf(stableTemp))
         with (hybridModel) {
             val jump = stableTempCoordinates.successors(true).next()
-            val decodedTarget = hybridEncoder.getNodeState(jump.target)
+            val decodedTarget = hybridEncoder.getModeOfNode(jump.target)
             assertEquals("off", decodedTarget)
         }
     }
 
     @Test
-    fun predecessor_jumpFromOnToOff_jumpsCorrectly() {
+    fun predecessors_jumpFromOnToOff_jumpsCorrectly() {
         val thresholdTemp = 6
         val thresholdTempCoordinate = hybridEncoder.encodeNode("on", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.predecessors(true).next()
-            val decodedTarget = hybridEncoder.getNodeState(jump.target)
+            val decodedTarget = hybridEncoder.getModeOfNode(jump.target)
             assertEquals("off", decodedTarget)
         }
     }
 
     @Test
-    fun predecessor_jumpFromOffToOn_jumpsCorrectly() {
-        val thresholdTemp = onModel.variables[0].thresholds.size - 4
+    fun predecessors_jumpFromOffToOn_jumpsCorrectly() {
+        val thresholdTemp = thresholdsSize - 4
         val thresholdTempCoordinate = hybridEncoder.encodeNode("off", intArrayOf(thresholdTemp))
         with (hybridModel) {
             val jump = thresholdTempCoordinate.predecessors(true).next()
-            val decodedTarget = hybridEncoder.getNodeState(jump.target)
+            val decodedTarget = hybridEncoder.getModeOfNode(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
 
     @Test
-    fun predecessor_jumpFromOnToOn_jumpsCorrectly() {
-        val stableTemp = onModel.variables[0].thresholds.size / 2
+    fun predecessors_jumpFromOnToOn_jumpsCorrectly() {
+        val stableTemp = thresholdsSize / 2
         val stableTempCoordinates = hybridEncoder.encodeNode("on", intArrayOf(stableTemp))
         with (hybridModel) {
             val jump = stableTempCoordinates.predecessors(true).next()
-            val decodedTarget = hybridEncoder.getNodeState(jump.target)
+            val decodedTarget = hybridEncoder.getModeOfNode(jump.target)
             assertEquals("on", decodedTarget)
         }
     }
 
     @Test
-    fun predecessor_jumpFromOffToOff_jumpsCorrectly() {
-        val stableTemp = onModel.variables[0].thresholds.size / 2
+    fun predecessors_jumpFromOffToOff_jumpsCorrectly() {
+        val stableTemp = thresholdsSize / 2
         val stableTempCoordinates = hybridEncoder.encodeNode("off", intArrayOf(stableTemp))
         with (hybridModel) {
             val jump = stableTempCoordinates.predecessors(true).next()
-            val decodedTarget = hybridEncoder.getNodeState(jump.target)
+            val decodedTarget = hybridEncoder.getModeOfNode(jump.target)
             assertEquals("off", decodedTarget)
         }
     }
 
+    @Test
+    fun successors_jumpFromInvalidState_jumpsNowhere() {
+        val invalidTemp = 0
+        val invalidCoordinates = hybridEncoder.encodeNode("on", intArrayOf(invalidTemp))
+        with (hybridModel) {
+            val jumps = invalidCoordinates.successors(true)
+            assertFalse(jumps.hasNext())
+        }
+    }
+
+
+    @Test
+    fun predecessors_jumpFromInvalidState_jumpsNowhere() {
+        val invalidTemp = thresholdsSize-  1
+        val invalidCoordinates = hybridEncoder.encodeNode("on", intArrayOf(invalidTemp))
+        with (hybridModel) {
+            val jumps = invalidCoordinates.predecessors(true)
+            assertFalse(jumps.hasNext())
+        }
+    }
+
+
+    @Test
+    fun successors_jumpFromValidState_doesNotJumpToInvalid() {
+        val almostInvalidTemp = onModel.variables[0].thresholds.indexOf(85.0)
+        val invalidCoordinates = hybridEncoder.encodeNode("on", intArrayOf(almostInvalidTemp))
+        with (hybridModel) {
+            val jumps = invalidCoordinates.successors(true).asSequence()
+            assertEquals(1, jumps.count(), "Only jump to off should be possible (invariants)")
+        }
+    }
+
+
+    @Test
+    fun predecessors_jumpFromValidState_doesNotJumpToInvalid() {
+        val almostInvalidTemp = onModel.variables[0].thresholds.indexOf(30.0)
+        val invalidCoordinates = hybridEncoder.encodeNode("on", intArrayOf(almostInvalidTemp))
+        with (hybridModel) {
+            val jumps = invalidCoordinates.predecessors(true).asSequence()
+            assertEquals(1, jumps.count(), "Only jump to off should be possible (invariants)")
+        }
+    }
 
 
     @Test
@@ -150,7 +195,7 @@ class HybridModelTest {
 
     private fun Int.stateString(encoder: HybridNodeEncoder): String {
         val coords = encoder.decodeNode(this)
-        val mode = encoder.getNodeState(this)
+        val mode = encoder.getModeOfNode(this)
         return "$this:$mode:${Arrays.toString(coords)}"
     }
 
@@ -190,9 +235,9 @@ class HybridModelTest {
         val solver = RectangleSolver(Rectangle(doubleArrayOf(-2.0, 2.0)))
         val onModel = Parser().parse(Paths.get("resources", "hybridModelTest", "ParametrizedOn.bio").toFile())
         val offModel = Parser().parse(Paths.get("resources", "hybridModelTest", "ParametrizedOff.bio").toFile())
-        val variableOrder = onModel.variables.map{it -> it.name}.toTypedArray()
-        val onState = HybridState("on", onModel, listOf(ConstantHybridCondition(onModel.variables[0], 18.0, false, variableOrder)))
-        val offState = HybridState("off", offModel, listOf(ConstantHybridCondition(offModel.variables[0], 3.0, true, variableOrder)))
+        val variableOrder = onModel.variables.map{ it.name}.toTypedArray()
+        val onState = HybridMode("on", onModel, ConstantHybridCondition(onModel.variables[0], 18.0, false, variableOrder))
+        val offState = HybridMode("off", offModel, ConstantHybridCondition(offModel.variables[0], 3.0, true, variableOrder))
         val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 15.0, true, variableOrder), emptyMap(), emptyList())
         val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 5.0, false, variableOrder), emptyMap(), emptyList())
         val hybridModel = HybridModel(solver, listOf(onState, offState), listOf(transition1, transition2))
@@ -201,7 +246,7 @@ class HybridModelTest {
             /*
             r.entries().forEach { (node, params) ->
                 val decoded = hybridModel.hybridEncoder.decodeNode(node)
-                val state = hybridModel.hybridEncoder.getNodeState(node)
+                val state = hybridModel.hybridEncoder.getModeOfNode(node)
                 println("State $state; x: ${decoded[0]}: ${params.first()}")
             }
             */

@@ -5,51 +5,51 @@ import java.lang.IllegalArgumentException
 import java.util.Collections.max
 
 class HybridNodeEncoder(
-        models: Map<String, HybridState>
+        models: Map<String, HybridMode>
 ) {
-    private val stateModelEncoders = hashMapOf(
+    private val modeOdeEncoders = hashMapOf(
             *(models.map { entry ->
                 Pair(entry.key, NodeEncoder(entry.value.odeModel))
             }.toTypedArray())
     )
-    private val nodesPerState = max(stateModelEncoders.map{ encoder -> encoder.value.stateCount})!!
-    private val stateNamesOrder = listOf(*(models.keys.toTypedArray()))
+    private val nodesPerMode = max(modeOdeEncoders.map{ encoder -> encoder.value.stateCount})!!
+    private val modeNamesOrder = listOf(*(models.keys.toTypedArray()))
     private val variableNamesOrder = listOf(*(models.values.first().odeModel.variables.map{it.name}.toTypedArray()))
     private val variables = models.values.first().odeModel.variables.associateBy({it.name}, {it})
 
-    val nodeCount: Int = models.count() * nodesPerState
+    val nodeCount: Int = models.count() * nodesPerMode
 
     init {
-        if (models.count() * nodesPerState > Int.MAX_VALUE) {
+        if (models.count() * nodesPerMode > Int.MAX_VALUE) {
             throw IllegalArgumentException("Hybrid model is too big for integer encoding!")
         }
     }
 
     /**
-     * Encode given state name and coordinate array into a single number.
+     * Encode given mode name and coordinate array into a single number.
      */
     fun encodeNode(modelKey: String, coordinates: IntArray): Int {
-        val modelIndex = stateNamesOrder.indexOf(modelKey) * nodesPerState
-        val modelEncoder = stateModelEncoders[modelKey]!!
-        return modelIndex + modelEncoder.encodeNode(coordinates)
+        val modeIndex = modeNamesOrder.indexOf(modelKey) * nodesPerMode
+        val modeEncoder = modeOdeEncoders[modelKey]!!
+        return modeIndex + modeEncoder.encodeNode(coordinates)
     }
 
 
     /**
-     * Decode given node into array of it's coordinates.
+     * Decode given node into an array of it's coordinates.
      */
     fun decodeNode(node: Int): IntArray {
-        val modelKey = getNodeState(node)
-        return stateModelEncoders[modelKey]!!.decodeNode(node % nodesPerState)
+        val modeKey = getModeOfNode(node)
+        return modeOdeEncoders.getValue(modeKey).decodeNode(node % nodesPerMode)
     }
 
 
     /**
-     * Returns the name of the model to which the node belongs.
+     * Returns the name of the hybrid mode to which the node belongs.
      */
-    fun getNodeState(node: Int): String {
-        val modelIndex = node / nodesPerState
-        return stateNamesOrder[modelIndex]
+    fun getModeOfNode(node: Int): String {
+        val modeIndex = node / nodesPerMode
+        return modeNamesOrder[modeIndex]
     }
 
 
@@ -57,56 +57,56 @@ class HybridNodeEncoder(
      * Returns coordinate of the node in the specified dimension
      */
     fun coordinate(of: Int, dim: Int): Int {
-        val modelKey = getNodeState(of)
-        return stateModelEncoders[modelKey]!!.coordinate(of % nodesPerState, dim)
+        val modelKey = getModeOfNode(of)
+        return modeOdeEncoders.getValue(modelKey).coordinate(of % nodesPerMode, dim)
     }
 
 
     /**
-     * Transforms the node's position within the discrete state (model) into the position within the hybrid system
+     * Transforms the node's position within the discrete mode into the position within the hybrid model
      */
-    fun nodeInHybrid(modelKey: String, node: Int): Int {
-        return stateNamesOrder.indexOf(modelKey) * nodesPerState + node
+    fun nodeInHybrid(modeKey: String, node: Int): Int {
+        return modeNamesOrder.indexOf(modeKey) * nodesPerMode + node
     }
 
 
     /**
-     * Transforms the node's position within the hybrid system into the position within the discrete state (model)
+     * Transforms the node's position within the hybrid system into the position within the discrete mode
      */
-    fun nodeInState(node: Int): Int {
-        return node % nodesPerState
+    fun nodeInLocalMode(node: Int): Int {
+        return node % nodesPerMode
     }
 
 
     /**
-     * Decodes node into array of coordinates of the variables.
+     * Decodes node into an array of variable coordinates.
      */
     fun getVariableCoordinates(node: Int): IntArray {
-        val modelKey = getNodeState(node)
-        return stateModelEncoders[modelKey]!!.decodeNode(node % nodesPerState)
+        val modeKey = getModeOfNode(node)
+        return modeOdeEncoders.getValue(modeKey).decodeNode(node % nodesPerMode)
     }
 
 
     /**
-     * Returns all nodes of the specified state.
+     * Returns all nodes belonging to the specified mode.
      */
-    fun getNodesOfState(modelKey: String): IntRange {
-        val modelIndex = stateNamesOrder.indexOf(modelKey)
-        val beginning =  modelIndex * nodesPerState
-        val end = beginning + nodesPerState
+    fun getNodesOfMode(modeKey: String): IntRange {
+        val modeIndex = modeNamesOrder.indexOf(modeKey)
+        val beginning =  modeIndex * nodesPerMode
+        val end = beginning + nodesPerMode
         return beginning until end
     }
 
 
     /**
-     * Shifts node from the old position to the new state while updating the values specific for the jump
+     * Shifts node from the old position to the new mode while updating the values specific for the jump
      */
-    fun shiftNodeToOtherStateWithUpdatedValues(oldPosition: Int, newState: String, updatedVariables: Map<String, Int>): Int {
+    fun shiftNodeToOtherModeWithUpdatedValues(oldPosition: Int, newState: String, updatedVariables: Map<String, Int>): Int {
         val coordinates = getVariableCoordinates(oldPosition)
 
         for (ov in updatedVariables.keys) {
             val varIndex = variableNamesOrder.indexOf(ov)
-            coordinates[varIndex] = updatedVariables[ov]!!
+            coordinates[varIndex] = updatedVariables.getValue(ov)
         }
 
         return encodeNode(newState, coordinates)
@@ -114,19 +114,23 @@ class HybridNodeEncoder(
 
 
     /**
-     * Returns all nodes in the specified state, where are all possible combinations of specified dynamic variables
+     * Returns all nodes in the specified mode, where are all possible combinations of specified dynamic variables
      * and each static (not dynamic) variable has specified implicit coordinates.
+     * This function is used for enumerating possible predecessors from a different mode of a node
+     * @param coordinates current node's coordinates
+     * @param mode current node's mode
+     * @param dynamicVariables variables which are reset during a transition, therefore their values could be anything before the transition
      */
-    fun enumerateStateNodesWithValidCoordinates(coordinates: IntArray, state: String, dynamicVariables: List<String>): List<Int> {
+    fun enumerateModeNodesWithValidCoordinates(coordinates: IntArray, mode: String, dynamicVariables: List<String>): List<Int> {
         if (dynamicVariables.isEmpty()) {
-            // No dynamic variables -> only static coordinates in the state are valid
-            return listOf(encodeNode(state, coordinates))
+            // No dynamic variables -> only static coordinates in the mode are valid
+            return listOf(encodeNode(mode, coordinates))
         }
 
         val dynamicVariableIndices = dynamicVariables.map { variableNamesOrder.indexOf(it) }
 
         // Generate all coordinate combinations of the dynamic variables
-        val dynamicVariableRanges = dynamicVariables.map { 0 until variables[it]!!.thresholds.size - 1 }
+        val dynamicVariableRanges = dynamicVariables.map { 0 until variables.getValue(it).thresholds.size - 1 }
         val dynamicCoordinateCombinations = dynamicVariableRanges.fold(
                 listOf<List<Int>>(emptyList())) { x, y -> crossAppend(x, y)}
 
@@ -136,7 +140,7 @@ class HybridNodeEncoder(
                 // Update value of all dynamic variables to the current combination
                 coordinates[dynamicVariableIndices[i]] = combination[i]
             }
-            possibleStates.add(encodeNode(state, coordinates))
+            possibleStates.add(encodeNode(mode, coordinates))
         }
 
         return possibleStates

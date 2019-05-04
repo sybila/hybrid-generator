@@ -12,25 +12,25 @@ import com.github.sybila.ode.model.OdeModel
 /**
  * Class representing a hybrid model composed of:
  *   - States defined by continuous ODE models
- *   - Discrete jumps between these states
+ *   - Discrete jumps between these modes
  * @param solver the solver used for evaluation of formulas on the model
- * @param states a list of discrete states of the hybrid models with their continuous model within them
- * @param transitions a list of transitions between the states
+ * @param modes a list of discrete modes of the hybrid models with their continuous model within them
+ * @param transitions a list of transitions between the modes
  */
 class HybridModel(
         solver: Solver<MutableSet<Rectangle>>,
-        states: List<HybridState>,
+        modes: List<HybridMode>,
         private val transitions: List<HybridTransition>
 ) : Model<MutableSet<Rectangle>>, Solver<MutableSet<Rectangle>> by solver {
-    private val statesMap = states.associateBy({it.label}, {it})
-    internal val variables: List<OdeModel.Variable> = states.first().odeModel.variables
+    private val statesMap = modes.associateBy({it.label}, {it})
+    internal val variables: List<OdeModel.Variable> = modes.first().odeModel.variables
     private val variableOrder = variables.map{ it.name }.toTypedArray()
     internal val hybridEncoder = HybridNodeEncoder(statesMap)
-    internal val parameters = states.first().odeModel.parameters
+    internal val parameters = modes.first().odeModel.parameters
 
     init {
-        for (s in states) {
-            validateStateConsistency(s)
+        for (mode in modes) {
+            validateModeConsistency(mode)
         }
     }
 
@@ -43,24 +43,24 @@ class HybridModel(
         if (!timeFlow)
             return this.successors(true)
 
-        val modelPredecessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
-        val currentState = statesMap[hybridEncoder.getNodeState(this)]!!
+        val predecessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
+        val currentMode = statesMap.getValue(hybridEncoder.getModeOfNode(this))
         val currentCoordinates = hybridEncoder.getVariableCoordinates(this)
 
-        if (currentState.invariantConditions.any{ !it.eval(currentCoordinates) })
-            // It is not possible to reach the state as it does not fulfill some invariant condition of the state
-            return modelPredecessors.iterator()
+        if (!currentMode.invariantCondition.eval(currentCoordinates))
+            // It is not possible to reach the state as it does not fulfill the invariant condition of the state
+            return predecessors.iterator()
 
-        // Add transitions from other states
-        val relevantJumps = transitions.filter{it.to == currentState.label}
+        // Add transitions from other modes
+        val relevantJumps = transitions.filter{it.to == currentMode.label}
         for (jump in relevantJumps) {
-            addJumpPredecessors(modelPredecessors, currentCoordinates, jump)
+            addJumpPredecessors(predecessors, currentCoordinates, jump)
         }
 
         // Add transitions withing the current ODE model state
-        addLocalTransitions(modelPredecessors, currentState, this,false)
+        addLocalTransitions(predecessors, currentMode, this,false)
 
-        return modelPredecessors.iterator()
+        return predecessors.iterator()
     }
 
 
@@ -68,23 +68,23 @@ class HybridModel(
         if (!timeFlow)
             return this.predecessors(true)
 
-        val modelSuccessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
-        val currentState = statesMap[hybridEncoder.getNodeState(this)]!!
+        val successors = mutableListOf<Transition<MutableSet<Rectangle>>>()
+        val currentMode = statesMap.getValue(hybridEncoder.getModeOfNode(this))
         val variableCoordinates = hybridEncoder.getVariableCoordinates(this)
-        if (!currentState.invariantConditions.all{ it.eval(variableCoordinates) })
+        if (!currentMode.invariantCondition.eval(variableCoordinates))
             // It is not possible to reach the state as it does not fulfill some invariant condition of the state
-            return modelSuccessors.iterator()
+            return successors.iterator()
 
-        // Add transitions to other states
-        val relevantJumps = transitions.filter{ it.from == currentState.label }
+        // Add transitions to other modes
+        val relevantJumps = transitions.filter{ it.from == currentMode.label }
         for (jump in relevantJumps) {
-            addJumpSuccessors(modelSuccessors, this, jump, variableCoordinates)
+            addJumpSuccessors(successors, this, jump, variableCoordinates)
         }
 
         // Add transitions withing the current ODE model state
-        addLocalTransitions(modelSuccessors, currentState, this, true)
+        addLocalTransitions(successors, currentMode, this, true)
 
-        return modelSuccessors.iterator()
+        return successors.iterator()
     }
 
 
@@ -92,8 +92,8 @@ class HybridModel(
         val left = this.left
         val right = this.right
 
-        if (left is Expression.Variable && right is Expression.Variable && (left.name == "state" || right.name == "state")) {
-            // Eval node's state position related conditions, e.g. "state == x" or "state != x"
+        if (left is Expression.Variable && right is Expression.Variable && (left.name == "mode" || right.name == "mode")) {
+            // Eval node's state position related conditions, e.g. "mode == x" or "mode != x"
             return evalState(left, right)
         }
 
@@ -145,15 +145,15 @@ class HybridModel(
 
 
     /**
-     * Returns all nodes which do not fulfill some condition of their state position in the hybrid system.
+     * Returns all nodes which do not fulfill some condition of their state position in the hybrid model.
      */
-    fun getAllInvalidStates(): List<Int> {
+    fun getAllInvalidNodes(): List<Int> {
         val invalidStates = mutableListOf<Int>()
 
         for (node in 0 until stateCount) {
-            val state = hybridEncoder.getNodeState(node)
+            val mode = hybridEncoder.getModeOfNode(node)
             val coordinates= hybridEncoder.getVariableCoordinates(node)
-            if (statesMap[state]!!.invariantConditions.any{!it.eval(coordinates)}) {
+            if (!statesMap.getValue(mode).invariantCondition.eval(coordinates)) {
                 invalidStates.add(node)
             }
         }
@@ -162,8 +162,8 @@ class HybridModel(
     }
 
 
-    private fun validateStateConsistency(state: HybridState) {
-        val stateVariables = state.odeModel.variables
+    private fun validateModeConsistency(mode: HybridMode) {
+        val stateVariables = mode.odeModel.variables
         if (stateVariables.count() != variables.count()) {
             throw IllegalArgumentException("Inconsistent variable count")
         }
@@ -184,15 +184,15 @@ class HybridModel(
             // Some variable does not fulfill initial valuation after the jump
             return
 
-        for (node in hybridEncoder.enumerateStateNodesWithValidCoordinates(currentCoordinates, jump.from, jump.newPositions.keys.toList())) {
+        for (node in hybridEncoder.enumerateModeNodesWithValidCoordinates(currentCoordinates, jump.from, jump.newPositions.keys.toList())) {
             val predecessorCoordinates = hybridEncoder.getVariableCoordinates(node)
-            val predecessorState = statesMap[hybridEncoder.getNodeState(node)]!!
-            val predecessorStateIsValid = predecessorState.invariantConditions.all{ it.eval(predecessorCoordinates) }
+            val predecessorState = statesMap.getValue(hybridEncoder.getModeOfNode(node))
+            val predecessorStateIsValid = predecessorState.invariantCondition.eval(predecessorCoordinates)
             val canJumpFromPredecessor = jump.condition.eval(predecessorCoordinates)
 
             if ( predecessorStateIsValid && canJumpFromPredecessor) {
                 // Predecessor node is valid
-                val bounds = mutableSetOf(Rectangle(statesMap[jump.from]!!.odeModel.parameters.flatMap{ listOf(it.range.first, it.range.second) }.toDoubleArray()))
+                val bounds = mutableSetOf(Rectangle(statesMap.getValue(jump.from).odeModel.parameters.flatMap{ listOf(it.range.first, it.range.second) }.toDoubleArray()))
                 predecessors.add(Transition(node, DirectionFormula.Atom.Proposition(jump.from, Facet.NEGATIVE), bounds))
             }
         }
@@ -203,11 +203,11 @@ class HybridModel(
                                   node: Int, jump: HybridTransition, variableCoordinates: IntArray) {
         if (jump.condition.eval(variableCoordinates)) {
             // Jump is accessible
-            val target = hybridEncoder.shiftNodeToOtherStateWithUpdatedValues(node, jump.to, jump.newPositions)
+            val target = hybridEncoder.shiftNodeToOtherModeWithUpdatedValues(node, jump.to, jump.newPositions)
             val targetCoordinates = hybridEncoder.getVariableCoordinates(target)
-            val targetState = statesMap[hybridEncoder.getNodeState(target)]!!
-            if (targetState.invariantConditions.any {! it.eval(targetCoordinates) })
-            // Target does not fulfill invariant conditions of its state
+            val targetState = statesMap[hybridEncoder.getModeOfNode(target)]!!
+            if (!targetState.invariantCondition.eval(targetCoordinates))
+                // Target does not fulfill invariant conditions of its state
                 return
 
             val bounds = mutableSetOf(Rectangle(statesMap[jump.to]!!.odeModel.parameters.flatMap{ listOf(it.range.first, it.range.second) }.toDoubleArray()))
@@ -217,17 +217,17 @@ class HybridModel(
 
 
     private fun addLocalTransitions(transitions: MutableList<Transition<MutableSet<Rectangle>>>,
-                                    currentState: HybridState, node: Int, isSuccessors: Boolean) {
-        val nodeInStateModel = hybridEncoder.nodeInState(node)
+                                    currentMode: HybridMode, node: Int, isSuccessors: Boolean) {
+        val nodeInStateModel = hybridEncoder.nodeInLocalMode(node)
 
-        with(currentState.rectangleOdeModel) {
+        with(currentMode.rectangleOdeModel) {
             val localSuccessors = nodeInStateModel
                     .successors(isSuccessors)
                     .asSequence()
                     .filter { transition ->
-                        currentState.invariantConditions.all{ it.eval(hybridEncoder.getVariableCoordinates(transition.target)) }
+                        currentMode.invariantCondition.eval(hybridEncoder.getVariableCoordinates(transition.target))
                     }
-                    .map{ Transition(hybridEncoder.nodeInHybrid(currentState.label, it.target), it.direction, it.bound) }
+                    .map{ Transition(hybridEncoder.nodeInHybrid(currentMode.label, it.target), it.direction, it.bound) }
 
             transitions.addAll(localSuccessors)
         }
@@ -235,16 +235,16 @@ class HybridModel(
 
 
     private fun Formula.Atom.Float.evalState(left: Expression.Variable, right: Expression.Variable): HashStateMap<MutableSet<Rectangle>> {
-        val verifiedStateName = if (left.name == "state") right.name else left.name
+        val verifiedStateName = if (left.name == "mode") right.name else left.name
 
         if (verifiedStateName !in statesMap.keys)
-            throw IllegalArgumentException("The state in condition is not in the hybrid model")
+            throw IllegalArgumentException("The mode specified in the condition is not in the hybrid model")
         if (this.cmp != CompareOp.EQ && this.cmp != CompareOp.NEQ)
             throw IllegalArgumentException("Only == and != operators can be used to compare with state")
 
         val shouldEqual = this.cmp == CompareOp.EQ
         val result = HashStateMap(ff)
-        val stateIndices = hybridEncoder.getNodesOfState(verifiedStateName)
+        val stateIndices = hybridEncoder.getNodesOfMode(verifiedStateName)
 
         if (shouldEqual) {
             for (state in stateIndices) {

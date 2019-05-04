@@ -32,9 +32,9 @@ class FrogHybridModelTest {
     private val boxHeight = ConstantHybridCondition(yVariable, 0.5, false, variableOrder)
     private val inBox = ConjunctionHybridCondition(listOf(boxStart, boxEnd, boxHeight))
 
-    private val jumpState = HybridState("jump", odeModels[0], listOf(positiveVelocity))
-    private val fallState = HybridState("fall", odeModels[1], listOf(negativeVelocity))
-    private val badState = HybridState("bad", odeModels[2], listOf())
+    private val jumpState = HybridMode("jump", odeModels[0], positiveVelocity)
+    private val fallState = HybridMode("fall", odeModels[1], negativeVelocity)
+    private val badState = HybridMode("bad", odeModels[2], EmptyHybridCondition())
 
     private val transitionJumpFall = HybridTransition("jump", "fall", negativeVelocity, emptyMap(), emptyList())
     private val transitionJumpBad = HybridTransition("jump", "bad", inBox, emptyMap(), emptyList())
@@ -52,7 +52,7 @@ class FrogHybridModelTest {
 
         with (hybridModel) {
             val successors = inBoxState.successors(true)
-            assertTrue { successors.asSequence().any { hybridModel.hybridEncoder.getNodeState(it.target) == "bad" } }
+            assertTrue { successors.asSequence().any { hybridModel.hybridEncoder.getModeOfNode(it.target) == "bad" } }
         }
     }
 
@@ -60,7 +60,7 @@ class FrogHybridModelTest {
 
     @Test
     fun synthesis_bad_state_unreachable() {
-        val badUnreachable = "v > 0 && x < 0.00 && y < 0.00 && state == jump && !(EF state == bad)"
+        val badUnreachable = "v > 0 && x < 0.00 && y < 0.00 && mode == jump && !(EF mode == bad)"
 
         Checker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()
@@ -73,7 +73,7 @@ class FrogHybridModelTest {
 
                 r[0].entries().asSequence().sortedBy { hybridModel.hybridEncoder.coordinate(it.first, 2) } .forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
-                    val stateName = hybridModel.hybridEncoder.getNodeState(node)
+                    val stateName = hybridModel.hybridEncoder.getModeOfNode(node)
                     val xVal = xVariable.thresholds[(decoded[0])]
                     val yVal = yVariable.thresholds[(decoded[1])]
                     val vVal = vVariable.thresholds[(decoded[2])]
@@ -92,7 +92,7 @@ class FrogHybridModelTest {
 
     @Test
     fun synthesis_bad_state_reachable() {
-        val badUnreachable = "v > 0 && x < 0.00 && y < 0.00 && state == jump && (EF state == bad)"
+        val badUnreachable = "v > 0 && x < 0.00 && y < 0.00 && mode == jump && (EF mode == bad)"
 
         Checker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()
@@ -105,7 +105,7 @@ class FrogHybridModelTest {
 
                 r[0].entries().asSequence().sortedBy { hybridModel.hybridEncoder.coordinate(it.first, 2) } .forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
-                    val stateName = hybridModel.hybridEncoder.getNodeState(node)
+                    val stateName = hybridModel.hybridEncoder.getModeOfNode(node)
                     val xVal = xVariable.thresholds[(decoded[0])]
                     val yVal = yVariable.thresholds[(decoded[1])]
                     val vVal = vVariable.thresholds[(decoded[2])]
@@ -144,7 +144,7 @@ class FrogHybridModelTest {
 
                     queue.addAll(targets)
                     val decoded =  encoder.decodeNode(node)
-                    val stateName = encoder.getNodeState(node)
+                    val stateName = encoder.getModeOfNode(node)
                     val xVal = xVariable.thresholds[(decoded[0])]
                     val yVal = yVariable.thresholds[(decoded[1])]
                     val vVal = vVariable.thresholds[(decoded[2])]
@@ -154,7 +154,7 @@ class FrogHybridModelTest {
 
                     for (s in targets) {
                         val decoded = encoder.decodeNode(s)
-                        val stateName = encoder.getNodeState(s)
+                        val stateName = encoder.getModeOfNode(s)
                         val xVal = xVariable.thresholds[(decoded[0])]
                         val yVal = yVariable.thresholds[(decoded[1])]
                         val vVal = vVariable.thresholds[(decoded[2])]

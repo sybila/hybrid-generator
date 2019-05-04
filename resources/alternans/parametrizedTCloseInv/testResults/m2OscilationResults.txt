@@ -1,5 +1,5 @@
-Verified formula: (state == m2) && AG (EF state == m2)
-Elapsed time [mm:ss:SSS]: 00:00:976
+Verified formula: (mode == m2) && AG (EF mode == m2)
+Elapsed time [mm:ss:SSS]: 00:01:120
 State m2; Init node: t:5.0 v:0.0 h:0.0 ; TCloseInv: [-500.0, 500.0]
 State m2; Init node: t:10.0 v:0.0 h:0.0 ; TCloseInv: [-500.0, 500.0]
 State m2; Init node: t:15.0 v:0.0 h:0.0 ; TCloseInv: [-500.0, 500.0]

@@ -8,14 +8,17 @@ import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 
 
+/**
+ * Utility function for json files generating usable for visualization in Pythia
+ */
 fun printJsonHybridModelResults(hybridModel: HybridModel, result: Map<String, List<StateMap<Set<Rectangle>>>>): String  {
-    val stateThresholds = mutableListOf<Double>()
+    val modeThresholds = mutableListOf<Double>()
     val varCount = hybridModel.variables.count()
     for (i in 0..varCount)
-        stateThresholds.add(i.toDouble())
+        modeThresholds.add(i.toDouble())
 
-    val stateVariable = OdeModel.Variable("state", Pair(0.0, varCount.toDouble()), stateThresholds, null)
-    val variables = hybridModel.variables + stateVariable
+    val modeVariable = OdeModel.Variable("state", Pair(0.0, varCount.toDouble()), modeThresholds, null)
+    val variables = hybridModel.variables + modeVariable
     val odeModel = OdeModel(variables, hybridModel.parameters)
 
     return printJsonRectResults(odeModel, result)

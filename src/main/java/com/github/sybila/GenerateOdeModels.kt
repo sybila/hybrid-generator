@@ -4,6 +4,12 @@ import com.github.sybila.ode.model.OdeModel
 import com.github.sybila.ode.model.Parser
 import java.nio.file.Path
 
+
+/**
+ * Utility function for generating all ODE models for one hybrid model at once.
+ * @param dataPath path to .bio file containing data which have all ODE models in common
+ * @param equationPaths paths to .bio files where is data specific for an ODE model
+ */
 fun generateOdeModels(dataPath: Path, equationPaths: List<Path>) : List<OdeModel> {
     val models = mutableListOf<OdeModel>()
     val dataFileContent: String

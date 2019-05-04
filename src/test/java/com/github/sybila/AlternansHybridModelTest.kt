@@ -24,10 +24,10 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
     private val variableOrder = odeModels.first().variables.map{ it.name }.toTypedArray()
 
-    private val m1State = HybridState("m1", odeModels[0], listOf(ConstantHybridCondition(odeModels[0].variables[0], 1.0, false, variableOrder), ConstantHybridCondition(odeModels[0].variables[1], 0.05, true, variableOrder)))
-    private val m2State = HybridState("m2", odeModels[1], listOf(ConstantHybridCondition(odeModels[1].variables[0], 1.0, false, variableOrder), ConstantHybridCondition(odeModels[1].variables[1], 0.1, false, variableOrder)))
-    private val m3State = HybridState("m3", odeModels[2], listOf(ConstantHybridCondition(odeModels[2].variables[0], 300.0, false, variableOrder), ConstantHybridCondition(odeModels[2].variables[1], 0.05, true, variableOrder)))
-    private val m4State = HybridState("m4", odeModels[3], listOf(ConstantHybridCondition(odeModels[3].variables[0], 300.0, false, variableOrder), ConstantHybridCondition(odeModels[3].variables[1], 0.1, false, variableOrder)))
+    private val m1State = HybridMode("m1", odeModels[0], ConjunctionHybridCondition(listOf(ConstantHybridCondition(odeModels[0].variables[0], 1.0, false, variableOrder), ConstantHybridCondition(odeModels[0].variables[1], 0.05, true, variableOrder))))
+    private val m2State = HybridMode("m2", odeModels[1], ConjunctionHybridCondition(listOf(ConstantHybridCondition(odeModels[1].variables[0], 1.0, false, variableOrder), ConstantHybridCondition(odeModels[1].variables[1], 0.1, false, variableOrder))))
+    private val m3State = HybridMode("m3", odeModels[2], ConjunctionHybridCondition(listOf(ConstantHybridCondition(odeModels[2].variables[0], 300.0, false, variableOrder), ConstantHybridCondition(odeModels[2].variables[1], 0.05, true, variableOrder))))
+    private val m4State = HybridMode("m4", odeModels[3], ConjunctionHybridCondition(listOf(ConstantHybridCondition(odeModels[3].variables[0], 300.0, false, variableOrder), ConstantHybridCondition(odeModels[3].variables[1], 0.1, false, variableOrder))))
 
     private val tVariable = odeModels.first().variables[0]
     private val vVariable = odeModels.first().variables[1]
@@ -61,7 +61,7 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
     @Test
     fun synthesis_all_states_reachable() {
-        val reachabilityFormula = "(EF state == m1) && (EF state == m2) && (EF state == m3) && (EF state == m4)"
+        val reachabilityFormula = "(EF mode == m1) && (EF mode == m2) && (EF mode == m3) && (EF mode == m4)"
 
         SequentialChecker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()
@@ -74,7 +74,7 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
                 r.entries().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
-                    val stateName = hybridModel.hybridEncoder.getNodeState(node)
+                    val stateName = hybridModel.hybridEncoder.getModeOfNode(node)
                     val tVal = tVariable.thresholds[(decoded[0])]
                     val vVal = vVariable.thresholds[(decoded[1])]
                     val hVal = hVariable.thresholds[(decoded[2])]
@@ -88,7 +88,7 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
     @Test
     fun synthesis_m1_oscilation() {
-        val reachabilityFormula = "(state == m1) && AG (EF state == m1)"
+        val reachabilityFormula = "(mode == m1) && AG (EF mode == m1)"
 
         SequentialChecker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()
@@ -101,7 +101,7 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
                 r.entries().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
-                    val state = hybridModel.hybridEncoder.getNodeState(node)
+                    val state = hybridModel.hybridEncoder.getModeOfNode(node)
                     val tVal = tVariable.thresholds[(decoded[0])]
                     val vVal = vVariable.thresholds[(decoded[1])]
                     val hVal = hVariable.thresholds[(decoded[2])]
@@ -115,7 +115,7 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
     @Test
     fun synthesis_m2_oscilation() {
-        val reachabilityFormula = "(state == m2) && AG (EF state == m2)"
+        val reachabilityFormula = "(mode == m2) && AG (EF mode == m2)"
 
         SequentialChecker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()
@@ -128,7 +128,7 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
                 r.entries().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
-                    val state = hybridModel.hybridEncoder.getNodeState(node)
+                    val state = hybridModel.hybridEncoder.getModeOfNode(node)
                     val tVal = tVariable.thresholds[(decoded[0])]
                     val vVal = vVariable.thresholds[(decoded[1])]
                     val hVal = hVariable.thresholds[(decoded[2])]
@@ -142,7 +142,7 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
     @Test
     fun synthesis_m3_oscilation() {
-        val reachabilityFormula = "(state == m3) && AG (EF state == m3)"
+        val reachabilityFormula = "(mode == m3) && AG (EF mode == m3)"
 
         SequentialChecker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()
@@ -155,7 +155,7 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
                 r.entries().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
-                    val state = hybridModel.hybridEncoder.getNodeState(node)
+                    val state = hybridModel.hybridEncoder.getModeOfNode(node)
                     val tVal = tVariable.thresholds[(decoded[0])]
                     val vVal = vVariable.thresholds[(decoded[1])]
                     val hVal = hVariable.thresholds[(decoded[2])]
@@ -169,7 +169,7 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
     @Test
     fun synthesis_m4_oscilation() {
-        val reachabilityFormula = "(state == m4) && AG (EF state == m4)"
+        val reachabilityFormula = "(mode == m4) && AG (EF mode == m4)"
 
         SequentialChecker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()
@@ -182,7 +182,7 @@ class AlternansHybridModelTest(private val parameterName: String) {
 
                 r.entries().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
-                    val state = hybridModel.hybridEncoder.getNodeState(node)
+                    val state = hybridModel.hybridEncoder.getModeOfNode(node)
                     val tVal = tVariable.thresholds[(decoded[0])]
                     val vVal = vVariable.thresholds[(decoded[1])]
                     val hVal = hVariable.thresholds[(decoded[2])]

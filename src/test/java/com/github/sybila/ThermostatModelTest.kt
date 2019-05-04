@@ -14,12 +14,12 @@ class ThermostatModelTest {
     private val onModel = Parser().parse(Paths.get("resources", "thermostat", "on.bio").toFile())
     private val offModel = Parser().parse(Paths.get("resources", "thermostat", "off.bio").toFile())
     private val variableOrder = onModel.variables.map{ it.name}.toTypedArray()
-    private val onState = HybridState("on", onModel, emptyList())
-    private val offState = HybridState("off", offModel, emptyList())
-    private val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 21.0, true, variableOrder), emptyMap(), emptyList())
-    private val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 19.0, false, variableOrder), emptyMap(), emptyList())
+    private val onMode = HybridMode("on", onModel, EmptyHybridCondition())
+    private val offMode = HybridMode("off", offModel, EmptyHybridCondition())
+    private val transition1 = HybridTransition("on", "off", ConstantHybridCondition(onModel.variables[0], 21.0, true, variableOrder))
+    private val transition2 = HybridTransition("off", "on", ConstantHybridCondition(offModel.variables[0], 19.0, false, variableOrder))
 
-    private val hybridModel = HybridModel(solver, listOf(onState, offState), listOf(transition1, transition2))
+    private val hybridModel = HybridModel(solver, listOf(onMode, offMode), listOf(transition1, transition2))
 
 
     @Test
@@ -29,7 +29,7 @@ class ThermostatModelTest {
             val r = checker.verify(formula)
             r.entries().forEach { (node, params) ->
                 val decoded = hybridModel.hybridEncoder.decodeNode(node)
-                val state = hybridModel.hybridEncoder.getNodeState(node)
+                val state = hybridModel.hybridEncoder.getModeOfNode(node)
                 println("State $state; temp: ${decoded[0]}: ${params.first()}")
             }
             assertTrue(r.entries().hasNext())

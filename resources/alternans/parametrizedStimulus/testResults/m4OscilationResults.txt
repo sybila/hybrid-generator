@@ -1,5 +1,5 @@
-Verified formula: (state == m4) && AG (EF state == m4)
-Elapsed time [mm:ss:SSS]: 00:01:940
+Verified formula: (mode == m4) && AG (EF mode == m4)
+Elapsed time [mm:ss:SSS]: 00:00:785
 State m4; Init node: t:0.05 v:0.0 h:0.0 ; Stimulus: [-500.0, 500.0]
 State m4; Init node: t:0.0 v:0.0 h:0.0 ; Stimulus: [-500.0, 500.0]
 State m4; Init node: t:0.15 v:0.0 h:0.0 ; Stimulus: [-500.0, 500.0]
