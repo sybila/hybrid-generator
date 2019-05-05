@@ -1,6 +1,5 @@
 package com.github.sybila
 
-import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.model.OdeModel
 
 
@@ -93,5 +92,23 @@ class VariableHybridCondition(
         val secondVariableValue = secondVariable.thresholds[secondThresholdIndex]
         val isGt = firstVariableValue > secondVariableValue
         return gt == isGt
+    }
+}
+
+
+/**
+ * Represents a parametrized condition on jumps in a hybrid model.
+ * This condition should not be evaluated, it is only a possessor of data
+ * @param variable which is compared to parameter
+ * @param parameter parameter of a hybrid model
+ * @param gt true if the variable is expected to be greater than the parameter value
+ */
+class ParameterHybridCondition(
+        val variable: OdeModel.Variable,
+        val parameter: OdeModel.Parameter,
+        val gt: Boolean
+) : HybridCondition {
+    override fun eval(variableCoordinates: IntArray): Boolean {
+        throw UnsupportedOperationException()
     }
 }

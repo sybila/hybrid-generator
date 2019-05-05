@@ -22,10 +22,10 @@ class HybridModel(
         modes: List<HybridMode>,
         private val transitions: List<HybridTransition>
 ) : Model<MutableSet<Rectangle>>, Solver<MutableSet<Rectangle>> by solver {
-    private val statesMap = modes.associateBy({it.label}, {it})
+    private val modesMap = modes.associateBy({it.label}, {it})
     internal val variables: List<OdeModel.Variable> = modes.first().odeModel.variables
     private val variableOrder = variables.map{ it.name }.toTypedArray()
-    internal val hybridEncoder = HybridNodeEncoder(statesMap)
+    internal val hybridEncoder = HybridNodeEncoder(modesMap)
     internal val parameters = modes.first().odeModel.parameters
 
     init {
@@ -44,7 +44,7 @@ class HybridModel(
             return this.successors(true)
 
         val predecessors = mutableListOf<Transition<MutableSet<Rectangle>>>()
-        val currentMode = statesMap.getValue(hybridEncoder.getModeOfNode(this))
+        val currentMode = modesMap.getValue(hybridEncoder.getModeOfNode(this))
         val currentCoordinates = hybridEncoder.getVariableCoordinates(this)
 
         if (!currentMode.invariantCondition.eval(currentCoordinates))
@@ -69,7 +69,7 @@ class HybridModel(
             return this.predecessors(true)
 
         val successors = mutableListOf<Transition<MutableSet<Rectangle>>>()
-        val currentMode = statesMap.getValue(hybridEncoder.getModeOfNode(this))
+        val currentMode = modesMap.getValue(hybridEncoder.getModeOfNode(this))
         val variableCoordinates = hybridEncoder.getVariableCoordinates(this)
         if (!currentMode.invariantCondition.eval(variableCoordinates))
             // It is not possible to reach the state as it does not fulfill some invariant condition of the state
@@ -98,13 +98,13 @@ class HybridModel(
         }
 
         // Eval conditions comparing variable to constants, e.g. "var > 6.0"
-        val threshold: Double
+        val variableValue: Double
         val variableName: String
         val gt: Boolean
         when {
             left is Expression.Variable && right is Expression.Constant -> {
                 variableName = left.name
-                threshold = right.value
+                variableValue = right.value
                 gt = when (this.cmp) {
                     CompareOp.EQ, CompareOp.NEQ -> throw IllegalArgumentException("${this.cmp} comparison not supported.")
                     CompareOp.GT, CompareOp.GE -> true
@@ -113,7 +113,7 @@ class HybridModel(
             }
             left is Expression.Constant && right is Expression.Variable -> {
                 variableName = right.name
-                threshold = left.value
+                variableValue = left.value
                 gt = when (this.cmp) {
                     CompareOp.EQ, CompareOp.NEQ -> throw IllegalArgumentException("${this.cmp} comparison not supported.")
                     CompareOp.GT, CompareOp.GE -> false
@@ -125,13 +125,13 @@ class HybridModel(
 
         val dimension = variables.indexOfFirst { it.name == variableName }
         if (dimension < 0) throw IllegalArgumentException("Unknown variable $variableName")
-        val thresholdIndex = variables[dimension].thresholds.indexOfFirst { it == threshold }
-        if (threshold < 0) throw IllegalArgumentException("Unknown threshold $threshold")
+        val thresholdIndex = variables[dimension].thresholds.indexOfFirst { Math.abs(it - variableValue) < 0.00001 }
+        if (thresholdIndex < 0) throw IllegalArgumentException("Unknown threshold $variableValue")
 
         val result = HashStateMap(ff)
         for (state in 0 until stateCount) {
-            val stateIndex = hybridEncoder.coordinate(state, dimension)
-            if ((gt && stateIndex > thresholdIndex) || (!gt && stateIndex <= thresholdIndex)) {
+            val stateThresholdIndex = hybridEncoder.coordinate(state, dimension)
+            if ((gt && stateThresholdIndex > thresholdIndex) || (!gt && stateThresholdIndex <= thresholdIndex)) {
                 result[state] = tt
             }
         }
@@ -153,7 +153,7 @@ class HybridModel(
         for (node in 0 until stateCount) {
             val mode = hybridEncoder.getModeOfNode(node)
             val coordinates= hybridEncoder.getVariableCoordinates(node)
-            if (!statesMap.getValue(mode).invariantCondition.eval(coordinates)) {
+            if (!modesMap.getValue(mode).invariantCondition.eval(coordinates)) {
                 invalidStates.add(node)
             }
         }
@@ -186,13 +186,21 @@ class HybridModel(
 
         for (node in hybridEncoder.enumerateModeNodesWithValidCoordinates(currentCoordinates, jump.from, jump.newPositions.keys.toList())) {
             val predecessorCoordinates = hybridEncoder.getVariableCoordinates(node)
-            val predecessorState = statesMap.getValue(hybridEncoder.getModeOfNode(node))
+            val predecessorState = modesMap.getValue(hybridEncoder.getModeOfNode(node))
             val predecessorStateIsValid = predecessorState.invariantCondition.eval(predecessorCoordinates)
-            val canJumpFromPredecessor = jump.condition.eval(predecessorCoordinates)
 
-            if ( predecessorStateIsValid && canJumpFromPredecessor) {
+            val canJumpFromPredecessor: Boolean
+            val bounds: MutableSet<Rectangle>
+            if (jump.condition is ParameterHybridCondition) {
+                bounds = getValidParameterBounds(predecessorCoordinates, jump.condition)
+                canJumpFromPredecessor = !bounds.isEmpty()
+            } else {
+                bounds = mutableSetOf(Rectangle(modesMap.getValue(jump.from).odeModel.parameters.flatMap{ listOf(it.range.first, it.range.second) }.toDoubleArray()))
+                canJumpFromPredecessor = jump.condition.eval(predecessorCoordinates)
+            }
+
+            if (predecessorStateIsValid && canJumpFromPredecessor) {
                 // Predecessor node is valid
-                val bounds = mutableSetOf(Rectangle(statesMap.getValue(jump.from).odeModel.parameters.flatMap{ listOf(it.range.first, it.range.second) }.toDoubleArray()))
                 predecessors.add(Transition(node, DirectionFormula.Atom.Proposition(jump.from, Facet.NEGATIVE), bounds))
             }
         }
@@ -201,18 +209,31 @@ class HybridModel(
 
     private fun addJumpSuccessors(successors: MutableList<Transition<MutableSet<Rectangle>>>,
                                   node: Int, jump: HybridTransition, variableCoordinates: IntArray) {
-        if (jump.condition.eval(variableCoordinates)) {
-            // Jump is accessible
-            val target = hybridEncoder.shiftNodeToOtherModeWithUpdatedValues(node, jump.to, jump.newPositions)
-            val targetCoordinates = hybridEncoder.getVariableCoordinates(target)
-            val targetState = statesMap[hybridEncoder.getModeOfNode(target)]!!
-            if (!targetState.invariantCondition.eval(targetCoordinates))
-                // Target does not fulfill invariant conditions of its state
+        val bounds: MutableSet<Rectangle>
+        if (jump.condition is ParameterHybridCondition) {
+            // Parameter in jump condition -> bounds have to be derived
+            bounds = getValidParameterBounds(variableCoordinates, jump.condition)
+            if (bounds.isEmpty())
+                // No valid parameters -> no jump successor
                 return
-
-            val bounds = mutableSetOf(Rectangle(statesMap[jump.to]!!.odeModel.parameters.flatMap{ listOf(it.range.first, it.range.second) }.toDoubleArray()))
-            successors.add(Transition(target, DirectionFormula.Atom.Proposition(jump.to, Facet.POSITIVE), bounds))
         }
+        else if (!jump.condition.eval(variableCoordinates)){
+            // Can't jump from the current coordinates
+            return
+        }
+         else {
+            // Can jump from current coordinates, and there are no parameters in jump -> whole param. space is valid
+            bounds = mutableSetOf(Rectangle(modesMap.getValue(jump.to).odeModel.parameters.flatMap{ listOf(it.range.first, it.range.second) }.toDoubleArray()))
+        }
+
+        val target = hybridEncoder.shiftNodeToOtherModeWithUpdatedValues(node, jump.to, jump.newPositions)
+        val targetCoordinates = hybridEncoder.getVariableCoordinates(target)
+        val targetState = modesMap.getValue(hybridEncoder.getModeOfNode(target))
+        if (!targetState.invariantCondition.eval(targetCoordinates))
+            // Target does not fulfill invariant conditions of its state
+            return
+
+        successors.add(Transition(target, DirectionFormula.Atom.Proposition(jump.to, Facet.POSITIVE), bounds))
     }
 
 
@@ -234,10 +255,48 @@ class HybridModel(
     }
 
 
+    private fun getValidParameterBounds(fromCoordinates: IntArray, condition: ParameterHybridCondition): MutableSet<Rectangle> {
+        val variableThresholdIndex = fromCoordinates[variableOrder.indexOf(condition.variable.name)]
+        val variableValue = condition.variable.thresholds[variableThresholdIndex]
+        var allParameterBounds = parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
+        val parameterLowerBound = condition.parameter.range.first
+        val parameterUpperBound = condition.parameter.range.second
+        val parameterLowerBoundIndex = parameters.map{it.name}.indexOf(condition.parameter.name) * 2
+        val parameterUpperBoundIndex = parameters.map{it.name}.indexOf(condition.parameter.name) * 2 + 1
+
+        if (condition.gt) {
+            // Variable should be bigger then allowed parameters
+            if (variableValue < parameterLowerBound) {
+                // Variable value is lesser then all allowed param. values -> there are no ok params
+                return emptySet<Rectangle>().toMutableSet()
+            } else if (variableValue < parameterUpperBound) {
+                // Only a part of param. space is ok -> need to update
+                allParameterBounds[parameterUpperBoundIndex] = variableValue
+            } else {
+                // Whole param. space is ok
+            }
+
+        } else {
+            // Variable should be lesser then allowed parameters
+            if (variableValue > parameterUpperBound) {
+                // Variable value is greater then all allowed param. values -> there are no ok params
+                return emptySet<Rectangle>().toMutableSet()
+            } else if (variableValue > parameterLowerBound) {
+                // Only a part of param. space is ok -> need to update
+                allParameterBounds[parameterLowerBoundIndex] = variableValue
+            } else {
+                // Whole param. space is ok
+            }
+        }
+
+        return mutableSetOf(Rectangle(allParameterBounds))
+    }
+
+
     private fun Formula.Atom.Float.evalState(left: Expression.Variable, right: Expression.Variable): HashStateMap<MutableSet<Rectangle>> {
         val verifiedStateName = if (left.name == "mode") right.name else left.name
 
-        if (verifiedStateName !in statesMap.keys)
+        if (verifiedStateName !in modesMap.keys)
             throw IllegalArgumentException("The mode specified in the condition is not in the hybrid model")
         if (this.cmp != CompareOp.EQ && this.cmp != CompareOp.NEQ)
             throw IllegalArgumentException("Only == and != operators can be used to compare with state")
