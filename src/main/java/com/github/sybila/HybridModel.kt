@@ -32,6 +32,9 @@ class HybridModel(
         for (mode in modes) {
             validateModeConsistency(mode)
         }
+        for (transition in transitions) {
+            validateTransition(transition)
+        }
     }
 
 
@@ -175,6 +178,14 @@ class HybridModel(
                 throw IllegalArgumentException("Inconsistent variable threshold")
             }
         }
+    }
+
+    private fun validateTransition(transition: HybridTransition) {
+        val modeNames = modesMap.keys
+        if(transition.from !in modeNames)
+            throw IllegalArgumentException("Unknown mode in transition ${transition.from}")
+        if(transition.to !in modeNames)
+            throw IllegalArgumentException("Unknown mode in transition ${transition.to}")
     }
 
 

@@ -17,57 +17,57 @@ class DiauxShiftModelTest {
     private val onOffPath = Paths.get("resources", "diauxShift", "RPonT2off.bio")
     private val onOnPath = Paths.get("resources", "diauxShift", "RPonT2on.bio")
 
-    private val odeModels = generateOdeModels(dataPath, listOf(offOffPath, offOnPath, onOffPath, onOnPath))
-    private val variableOrder = odeModels.first().variables.map{ it.name }.toTypedArray()
+    private val c1AboveThreshold = Triple("C_1", 1.0, true)
+    private val c1BelowThreshold = Triple("C_1", 1.01, false)
+    private val rpAboveThreshold = Triple("RP", 1.0, true)
+    private val rpBelowThreshold = Triple("RP", 1.01, false)
 
-    private val c1Variable = odeModels.first().variables[0]
-    private val c2Variable = odeModels.first().variables[1]
-    private val mVariable = odeModels.first().variables[2]
-    private val rpVariable = odeModels.first().variables[3]
-    private val t1Variable = odeModels.first().variables[4]
-    private val t2Variable = odeModels.first().variables[5]
-    private val rVariable = odeModels.first().variables[6]
+    private val toOffOnCondition = listOf(c1BelowThreshold, rpBelowThreshold)
+    private val toOnOffCondition = listOf(c1AboveThreshold, rpAboveThreshold)
+    private val toOnOnCondition = listOf(c1AboveThreshold, rpBelowThreshold)
+    private val toOffOffCondition = listOf(c1BelowThreshold, rpAboveThreshold)
 
-    private val c1AboveThreshold = ConstantHybridCondition(c1Variable, 1.0, true, variableOrder)
-    private val c1BelowThreshold = ConstantHybridCondition(c1Variable, 1.01, false, variableOrder)
-    private val rpAboveThreshold = ConstantHybridCondition(rpVariable, 1.0, true, variableOrder)
-    private val rpBelowThreshold = ConstantHybridCondition(rpVariable, 1.01, false, variableOrder)
+    private val odeBuilder = HybridModelBuilder()
+            .withModesWithConjunctionInvariants(
+                    listOf("offOff", "offOn", "onOff", "onOn"),
+                    dataPath,
+                    listOf(offOffPath, offOnPath, onOffPath, onOnPath),
+                    listOf(
+                            listOf(c1BelowThreshold, rpAboveThreshold),
+                            listOf(c1BelowThreshold, rpBelowThreshold),
+                            listOf(c1BelowThreshold, rpBelowThreshold),
+                            listOf(c1AboveThreshold, rpBelowThreshold)
+                    )
+            )
+            .withTransitionWithConjunctionCondition("offOff", "offOn", toOffOnCondition)
+            .withTransitionWithConjunctionCondition("onOff", "offOn", toOffOnCondition)
+            .withTransitionWithConjunctionCondition("onOn", "offOn", toOffOnCondition)
 
-    private val offOffState = HybridMode("offOff", odeModels[0], ConjunctionHybridCondition(listOf(c1BelowThreshold, rpAboveThreshold)))
-    private val offOnState = HybridMode("offOn", odeModels[1], ConjunctionHybridCondition(listOf(c1BelowThreshold, rpBelowThreshold)))
-    private val onOffState = HybridMode("onOff", odeModels[2], ConjunctionHybridCondition(listOf(c1BelowThreshold, rpBelowThreshold)))
-    private val onOnState = HybridMode("onOn", odeModels[3], ConjunctionHybridCondition(listOf(c1AboveThreshold, rpBelowThreshold)))
+            .withTransitionWithConjunctionCondition("offOff", "onOff", toOnOffCondition)
+            .withTransitionWithConjunctionCondition("offOn", "onOff", toOnOffCondition)
+            .withTransitionWithConjunctionCondition("onOn", "onOff", toOnOffCondition)
 
-    private val toOffOnCondition = ConjunctionHybridCondition(listOf(c1BelowThreshold, rpBelowThreshold))
-    private val tOffOffToOffOn = HybridTransition("offOff", "offOn", toOffOnCondition, emptyMap(), emptyList())
-    private val tOnOffToOffOn = HybridTransition("onOff", "offOn", toOffOnCondition, emptyMap(), emptyList())
-    private val tOnOnToOffOn = HybridTransition("onOn", "offOn", toOffOnCondition, emptyMap(), emptyList())
+            .withTransitionWithConjunctionCondition("offOff", "onOn", toOnOnCondition)
+            .withTransitionWithConjunctionCondition("offOn", "onOn", toOnOnCondition)
+            .withTransitionWithConjunctionCondition("onOff", "onOn", toOnOnCondition)
 
-    private val toOnOffCondition = ConjunctionHybridCondition(listOf(c1AboveThreshold, rpAboveThreshold))
-    private val tOffOffToOnOff = HybridTransition("offOff", "onOff", toOnOffCondition, emptyMap(), emptyList())
-    private val tOffOnToOnOff = HybridTransition("offOn", "onOff", toOnOffCondition, emptyMap(), emptyList())
-    private val tOnOnToOnOff = HybridTransition("onOn", "onOff", toOnOffCondition, emptyMap(), emptyList())
+            .withTransitionWithConjunctionCondition("offOn", "offOff", toOffOffCondition)
+            .withTransitionWithConjunctionCondition("onOff", "offOff", toOffOffCondition)
+            .withTransitionWithConjunctionCondition("onOn", "offOff", toOffOffCondition)
 
-    private val toOnOnCondition = ConjunctionHybridCondition(listOf(c1AboveThreshold, rpBelowThreshold))
-    private val tOffOffToOnOn = HybridTransition("offOff", "onOn", toOnOnCondition, emptyMap(), emptyList())
-    private val tOffOnToOnOn = HybridTransition("offOn", "onOn", toOnOnCondition, emptyMap(), emptyList())
-    private val tOnOffToOnOn = HybridTransition("onOff", "onOn", toOnOnCondition, emptyMap(), emptyList())
-
-    private val toOffOffCondition = ConjunctionHybridCondition(listOf(c1BelowThreshold, rpAboveThreshold))
-    private val tOnOffToOffOff = HybridTransition("onOff", "offOff", toOffOffCondition, emptyMap(), emptyList())
-    private val tOnOnToOffOff = HybridTransition("onOn", "offOff", toOffOffCondition, emptyMap(), emptyList())
-    private val tOffOnToOffOff = HybridTransition("offOn", "offOff", toOffOffCondition, emptyMap(), emptyList())
-
-    private val states = listOf(offOffState, offOnState, onOffState, onOnState)
-    private val transitions = listOf(tOffOffToOffOn, tOnOffToOffOn, tOnOnToOffOn, tOffOffToOnOff, tOffOnToOnOff, tOnOnToOnOff,
-            tOffOffToOnOn, tOffOnToOnOn, tOnOffToOnOn, tOnOffToOffOff, tOnOnToOffOff, tOffOnToOffOff)
-
+    private val c1Variable = odeBuilder.variables[0]
+    private val c2Variable = odeBuilder.variables[1]
+    private val mVariable = odeBuilder.variables[2]
+    private val rpVariable = odeBuilder.variables[3]
+    private val t1Variable = odeBuilder.variables[4]
+    private val t2Variable = odeBuilder.variables[5]
+    private val rVariable = odeBuilder.variables[6]
 
 
     @Test
     fun test() {
         val solver = RectangleSolver(Rectangle(doubleArrayOf(/*TODO*/)))
-        val hybridModel = HybridModel(solver, states, transitions)
+        val hybridModel = odeBuilder.withSolver(solver).build()
 
         val formula = ""/*TODO*/
 
@@ -110,7 +110,7 @@ class DiauxShiftModelTest {
     @Test
     fun synthesis_offOffUnreachable() {
         val solver = RectangleSolver(Rectangle(doubleArrayOf()))
-        val hybridModel = HybridModel(solver, states, transitions)
+        val hybridModel = odeBuilder.withSolver(solver).build()
 
         val offOffUnreachable = "C_2 > 29 && C_2 < 31 && M > 39 && M < 41 && RP < 0.4 && T_1 < 5 && T_2 < 2 && R > 2 && R < 4 && mode == onOn && (AG mode != offOff)"
 

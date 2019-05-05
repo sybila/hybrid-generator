@@ -20,32 +20,38 @@ class AlternansHybridModelTest(private val parameterName: String) {
     private val m3Path = Paths.get("resources", "alternans", "parametrized$parameterName", "M3.bio")
     private val m4Path = Paths.get("resources", "alternans", "parametrized$parameterName", "M4.bio")
 
-    private val odeModels = generateOdeModels(dataPath, listOf(m1Path, m2Path, m3Path, m4Path))
+    private val tLt300 = Triple("t", 300.0, false)
+    private val tLt1 = Triple("t", 1.0, false)
+    private val vGt005 = Triple("v", 0.05, true)
+    private val vLt01 = Triple("v", 0.1, false)
 
-    private val variableOrder = odeModels.first().variables.map{ it.name }.toTypedArray()
+    private val hybridModel = HybridModelBuilder()
+            .withModesWithConjunctionInvariants(
+                    listOf("m1", "m2", "m3", "m4"),
+                    dataPath,
+                    listOf(m1Path, m2Path, m3Path, m4Path),
+                    listOf(
+                            listOf(tLt1, vGt005),
+                            listOf(tLt1, vLt01),
+                            listOf(tLt300, vGt005),
+                            listOf(tLt300, vLt01)
+                    )
+            )
+            .withTransitionWithConstantCondition("m1", "m2", "v", 0.1, false)
+            .withTransitionWithConstantCondition("m1", "m3", "t", 0.95, true)
+            .withTransitionWithConstantCondition("m2", "m1", "v", 0.05, true)
+            .withTransitionWithConstantCondition("m2", "m4", "t", 0.95, true)
+            .withTransitionWithConstantCondition("m3", "m4", "v", 0.1, false)
+            .withTransitionWithConstantCondition("m3", "m1", "t", 300.0, true)
+            .withTransitionWithConstantCondition("m4", "m3", "v", 0.1, false)
+            .withTransitionWithConstantCondition("m4", "m2", "t", 300.0, true)
+            .withSolver(solver)
+            .build()
 
-    private val m1State = HybridMode("m1", odeModels[0], ConjunctionHybridCondition(listOf(ConstantHybridCondition(odeModels[0].variables[0], 1.0, false, variableOrder), ConstantHybridCondition(odeModels[0].variables[1], 0.05, true, variableOrder))))
-    private val m2State = HybridMode("m2", odeModels[1], ConjunctionHybridCondition(listOf(ConstantHybridCondition(odeModels[1].variables[0], 1.0, false, variableOrder), ConstantHybridCondition(odeModels[1].variables[1], 0.1, false, variableOrder))))
-    private val m3State = HybridMode("m3", odeModels[2], ConjunctionHybridCondition(listOf(ConstantHybridCondition(odeModels[2].variables[0], 300.0, false, variableOrder), ConstantHybridCondition(odeModels[2].variables[1], 0.05, true, variableOrder))))
-    private val m4State = HybridMode("m4", odeModels[3], ConjunctionHybridCondition(listOf(ConstantHybridCondition(odeModels[3].variables[0], 300.0, false, variableOrder), ConstantHybridCondition(odeModels[3].variables[1], 0.1, false, variableOrder))))
 
-    private val tVariable = odeModels.first().variables[0]
-    private val vVariable = odeModels.first().variables[1]
-    private val hVariable = odeModels.first().variables[2]
-
-    private val t12 = HybridTransition("m1", "m2", ConstantHybridCondition(vVariable, 0.1, false, variableOrder), emptyMap(), emptyList())
-    private val t13 = HybridTransition("m1", "m3", ConstantHybridCondition(tVariable, 0.95, true, variableOrder), emptyMap(), emptyList())
-
-    private val t21 = HybridTransition("m2", "m1", ConstantHybridCondition(vVariable, 0.05, true, variableOrder), emptyMap(), emptyList())
-    private val t24 = HybridTransition("m2", "m4", ConstantHybridCondition(tVariable, 0.95, true, variableOrder), emptyMap(), emptyList())
-
-    private val t34 = HybridTransition("m3", "m4", ConstantHybridCondition(vVariable, 0.1, false, variableOrder), emptyMap(), emptyList())
-    private val t31 = HybridTransition("m3", "m1", ConstantHybridCondition(tVariable, 300.0, true, variableOrder), mapOf(Pair("t", 0.0)), odeModels[2].variables)
-
-    private val t43 = HybridTransition("m4", "m3", ConstantHybridCondition(vVariable, 0.1, false, variableOrder), emptyMap(), emptyList())
-    private val t42 = HybridTransition("m4", "m2", ConstantHybridCondition(tVariable, 300.0, true, variableOrder), mapOf(Pair("t", 0.0)), odeModels[3].variables)
-
-    private val hybridModel = HybridModel(solver, listOf(m1State, m2State, m3State, m4State), listOf(t12, t13, t21, t24, t34, t31, t43, t42))
+    private val tVariable = hybridModel.variables[0]
+    private val vVariable = hybridModel.variables[1]
+    private val hVariable = hybridModel.variables[2]
 
     companion object {
         @JvmStatic

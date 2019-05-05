@@ -1,4 +1,4 @@
 Verified formula: C_2 > 29 && C_2 < 31 && M > 39 && M < 41 && RP < 0.4 && T_1 < 5 && T_2 < 2 && R > 2 && R < 4 && mode == onOn && (AG mode != offOff)
-Elapsed time [mm:ss:SSS]: 02:08:828
+Elapsed time [mm:ss:SSS]: 02:16:667
 Init c1:0.0
 Init c1:1.0

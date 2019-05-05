@@ -11,28 +11,25 @@ import kotlin.test.assertTrue
 
 class WaterTanksModelTest {
     private val solver = RectangleSolver(Rectangle(doubleArrayOf(-5.0, 5.0, 0.0, 20.0)))
-    private val water1FlowModel = Parser().parse(Paths.get("resources", "waterTanks", "water1Flow.bio").toFile())
-    private val water2FlowModel = Parser().parse(Paths.get("resources", "waterTanks", "water2Flow.bio").toFile())
-    private val badModel = Parser().parse(Paths.get("resources", "waterTanks", "bad.bio").toFile())
-
-    private val variableOrder = water1FlowModel.variables.map{ it.name}.toTypedArray()
-
-    private val water1FlowMode = HybridMode("water1Flow", water1FlowModel, EmptyHybridCondition())
-    private val water2FlowMode = HybridMode("water2Flow", water2FlowModel, EmptyHybridCondition())
-    private val badMode = HybridMode("bad", badModel, EmptyHybridCondition())
-
-    private val kParam = water1FlowModel.parameters[1]
-    private val w1Variable = water1FlowModel.variables[0]
-    private val w2Variable = water1FlowModel.variables[1]
-
-    private val transition1 = HybridTransition("water1Flow", "water2Flow", ParameterHybridCondition(w1Variable, kParam, true))
-    private val transition2 = HybridTransition("water2Flow", "bad", ConjunctionHybridCondition(listOf(
-            ConstantHybridCondition(w1Variable, 10.0, false, variableOrder), ConstantHybridCondition(w2Variable, 10.0, true, variableOrder))))
-    private val transition3 = HybridTransition("water1Flow", "bad", ConstantHybridCondition(w1Variable, -1.0, false, variableOrder))
+    private val water1FlowPath = Paths.get("resources", "waterTanks", "water1Flow.bio")
+    private val water2FlowPath = Paths.get("resources", "waterTanks", "water2Flow.bio")
+    private val badPath = Paths.get("resources", "waterTanks", "bad.bio")
 
 
-    private val hybridModel = HybridModel(solver, listOf(water1FlowMode, water2FlowMode, badMode), listOf(transition1, transition2, transition3))
+    private val hybridModel = HybridModelBuilder()
+            .withSolver(solver)
+            .withMode("water1Flow", water1FlowPath)
+            .withMode("water2Flow", water2FlowPath)
+            .withMode("bad", badPath)
+            .withTransitionWithParametrizedCondition("water1Flow", "water2Flow", "w1","w", true)
+            .withTransitionWithConjunctionCondition("water2Flow", "bad",
+                    listOf(Triple("w1", 10.0, false), Triple("w2", 10.0, true)
+                    ))
+            .withTransitionWithConstantCondition("water1Flow", "bad", "w1", -1.0, false)
+            .build()
 
+    private val w1Variable = hybridModel.variables[0]
+    private val w2Variable = hybridModel.variables[1]
 
     @Test
     fun parameterSynthesis() {

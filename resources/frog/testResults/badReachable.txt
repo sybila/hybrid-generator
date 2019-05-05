@@ -1,5 +1,5 @@
 Verified formula: v > 0 && x < 0.00 && y < 0.00 && mode == jump && (EF mode == bad)
-Elapsed time [mm:ss:SSS]: 00:12:679
+Elapsed time [mm:ss:SSS]: 00:09:151
 State jump; Init node: x:0.0 y:0.0 v:0.05
 State jump; Init node: x:0.0 y:0.0 v:0.1
 State jump; Init node: x:0.0 y:0.0 v:0.15

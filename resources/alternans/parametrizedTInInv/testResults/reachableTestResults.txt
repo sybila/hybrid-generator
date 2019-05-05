@@ -1,5 +1,5 @@
 Verified formula: (EF mode == m1) && (EF mode == m2) && (EF mode == m3) && (EF mode == m4)
-Elapsed time [mm:ss:SSS]: 00:01:190
+Elapsed time [mm:ss:SSS]: 00:01:681
 State m1; Init node: t:0.0 v:0.15 h:0.5 ; TInInv: [-500.0, -16.63696732026144]
 State m1; Init node: t:0.05 v:0.15 h:0.5 ; TInInv: [-500.0, -16.63696732026144]
 State m1; Init node: t:0.1 v:0.15 h:0.5 ; TInInv: [-500.0, -16.63696732026144]
