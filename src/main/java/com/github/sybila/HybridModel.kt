@@ -1,10 +1,6 @@
 package com.github.sybila
 
-import com.github.sybila.checker.Model
-import com.github.sybila.checker.Solver
-import com.github.sybila.checker.StateMap
-import com.github.sybila.checker.Transition
-import com.github.sybila.checker.map.mutable.HashStateMap
+import com.github.sybila.checker.*
 import com.github.sybila.huctl.*
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.model.OdeModel
@@ -131,7 +127,7 @@ class HybridModel(
         val thresholdIndex = variables[dimension].thresholds.indexOfFirst { Math.abs(it - variableValue) < 0.00001 }
         if (thresholdIndex < 0) throw IllegalArgumentException("Unknown threshold $variableValue")
 
-        val result = HashStateMap(ff)
+        val result = ConcurrentHashStateMap(ff)
         for (state in 0 until stateCount) {
             val stateThresholdIndex = hybridEncoder.coordinate(state, dimension)
             if ((gt && stateThresholdIndex > thresholdIndex) || (!gt && stateThresholdIndex <= thresholdIndex)) {
@@ -269,7 +265,7 @@ class HybridModel(
     private fun getValidParameterBounds(fromCoordinates: IntArray, condition: ParameterHybridCondition): MutableSet<Rectangle> {
         val variableThresholdIndex = fromCoordinates[variableOrder.indexOf(condition.variable.name)]
         val variableValue = condition.variable.thresholds[variableThresholdIndex]
-        var allParameterBounds = parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
+        val allParameterBounds = parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
         val parameterLowerBound = condition.parameter.range.first
         val parameterUpperBound = condition.parameter.range.second
         val parameterLowerBoundIndex = parameters.map{it.name}.indexOf(condition.parameter.name) * 2
@@ -304,7 +300,7 @@ class HybridModel(
     }
 
 
-    private fun Formula.Atom.Float.evalState(left: Expression.Variable, right: Expression.Variable): HashStateMap<MutableSet<Rectangle>> {
+    private fun Formula.Atom.Float.evalState(left: Expression.Variable, right: Expression.Variable): MutableStateMap<MutableSet<Rectangle>> {
         val verifiedStateName = if (left.name == "mode") right.name else left.name
 
         if (verifiedStateName !in modesMap.keys)
@@ -313,7 +309,7 @@ class HybridModel(
             throw IllegalArgumentException("Only == and != operators can be used to compare with state")
 
         val shouldEqual = this.cmp == CompareOp.EQ
-        val result = HashStateMap(ff)
+        val result = ConcurrentHashStateMap(ff)
         val stateIndices = hybridEncoder.getNodesOfMode(verifiedStateName)
 
         if (shouldEqual) {
