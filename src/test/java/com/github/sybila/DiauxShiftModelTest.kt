@@ -1,6 +1,7 @@
 package com.github.sybila
 
 import com.github.sybila.checker.Checker
+import com.github.sybila.checker.channel.connectWithSharedMemory
 import com.github.sybila.checker.partition.asUniformPartitions
 import com.github.sybila.huctl.HUCTLParser
 import com.github.sybila.ode.generator.rect.Rectangle
@@ -75,10 +76,10 @@ class DiauxShiftModelTest {
         val parallelism = intArrayOf(1, 2, 4, 8, 16, 32, 64)
 
         for (i in parallelism) {
-            (0 until i).map {
+            val models = (0 until i).map {
                 odeBuilder.withSolver(solver).build()
             }.asUniformPartitions()
-            Checker(hybridModel).use { checker ->
+            Checker(models.connectWithSharedMemory()).use { checker ->
                 val startTime = System.currentTimeMillis()
                 val r = checker.verify(HUCTLParser().parse(formula))
                 val elapsedTime = System.currentTimeMillis() - startTime
