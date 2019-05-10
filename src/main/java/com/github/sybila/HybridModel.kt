@@ -1,6 +1,7 @@
 package com.github.sybila
 
 import com.github.sybila.checker.*
+import com.github.sybila.checker.map.mutable.HashStateMap
 import com.github.sybila.huctl.*
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.model.OdeModel
@@ -127,7 +128,7 @@ class HybridModel(
         val thresholdIndex = variables[dimension].thresholds.indexOfFirst { Math.abs(it - variableValue) < 0.00001 }
         if (thresholdIndex < 0) throw IllegalArgumentException("Unknown threshold $variableValue")
 
-        val result = ConcurrentHashStateMap(ff)
+        val result = HashStateMap(ff)
         for (state in 0 until stateCount) {
             val stateThresholdIndex = hybridEncoder.coordinate(state, dimension)
             if ((gt && stateThresholdIndex > thresholdIndex) || (!gt && stateThresholdIndex <= thresholdIndex)) {
@@ -309,7 +310,7 @@ class HybridModel(
             throw IllegalArgumentException("Only == and != operators can be used to compare with state")
 
         val shouldEqual = this.cmp == CompareOp.EQ
-        val result = ConcurrentHashStateMap(ff)
+        val result = HashStateMap(ff)
         val stateIndices = hybridEncoder.getNodesOfMode(verifiedStateName)
 
         if (shouldEqual) {

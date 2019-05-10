@@ -25,7 +25,7 @@ version = '1.0.0'
 
 // make the Java compile task depend on the antlr4 task
 compileKotlin.dependsOn generateGrammarSource
-
+ 
 repositories {
     mavenCentral()
     maven { url "https://jitpack.io" }

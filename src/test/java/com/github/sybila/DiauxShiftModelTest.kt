@@ -66,14 +66,14 @@ class DiauxShiftModelTest {
 
     @Test
     fun test() {
-        val solver = RectangleSolver(Rectangle(doubleArrayOf(/*TODO*/)))
+        val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
         val hybridModel = odeBuilder.withSolver(solver).build()
 
-        val formula = ""/*TODO*/
+        val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
 
         Checker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()
-            val r = checker.verify(HUCTLParser().formula(formula))
+            val r = checker.verify(HUCTLParser().parse(formula))
             val elapsedTime = System.currentTimeMillis() - startTime
 
             // File with valid initial states + relevant params
@@ -81,7 +81,7 @@ class DiauxShiftModelTest {
                 out.println("Verified formula: $formula")
                 out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
-                r[0].entries().asSequence().forEach { (node, params) ->
+                r.getValue("onOn_toOnOff")[0].entries().asSequence().forEach { (node, params) ->
                     val decoded =  hybridModel.hybridEncoder.decodeNode(node)
                     val stateName = hybridModel.hybridEncoder.getModeOfNode(node)
                     val c1Val = c1Variable.thresholds[(decoded[0])]
@@ -99,10 +99,10 @@ class DiauxShiftModelTest {
 
             // File with json
             Paths.get("resources", "diauxShift", "testResults", "model.json").toFile().printWriter().use { out ->
-                out.println(printJsonHybridModelResults(hybridModel, mapOf(Pair(formula, r))))
+                out.println(printJsonHybridModelResults(hybridModel, r))
             }
 
-            assertTrue(r[0].entries().asSequence().any() && r[0].entries().asSequence().all{it.second.isNotEmpty()})
+            assertTrue(r.getValue("onOn_toOnOff")[0].entries().asSequence().any() && r.getValue("onOn_toOnOff")[0].entries().asSequence().all{it.second.isNotEmpty()})
         }
     }
 
