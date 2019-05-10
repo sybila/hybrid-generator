@@ -1,6 +1,7 @@
 package com.github.sybila
 
 import com.github.sybila.checker.Checker
+import com.github.sybila.checker.partition.asUniformPartitions
 import com.github.sybila.huctl.HUCTLParser
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleSolver
@@ -65,44 +66,52 @@ class DiauxShiftModelTest {
 
 
     @Test
-    fun test() {
+    fun pathThroughAllModes() {
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
         val hybridModel = odeBuilder.withSolver(solver).build()
 
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
 
-        Checker(hybridModel).use { checker ->
-            val startTime = System.currentTimeMillis()
-            val r = checker.verify(HUCTLParser().parse(formula))
-            val elapsedTime = System.currentTimeMillis() - startTime
+        val parallelism = intArrayOf(1, 2, 4, 8, 16, 32, 64)
 
-            // File with valid initial states + relevant params
-            Paths.get("resources", "diauxShift", "testResults", "test.txt").toFile().printWriter().use { out ->
-                out.println("Verified formula: $formula")
-                out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
+        for (i in parallelism) {
+            (0 until i).map {
+                odeBuilder.withSolver(solver).build()
+            }.asUniformPartitions()
+            Checker(hybridModel).use { checker ->
+                val startTime = System.currentTimeMillis()
+                val r = checker.verify(HUCTLParser().parse(formula))
+                val elapsedTime = System.currentTimeMillis() - startTime
 
-                r.getValue("onOn_toOnOff")[0].entries().asSequence().forEach { (node, params) ->
-                    val decoded =  hybridModel.hybridEncoder.decodeNode(node)
-                    val stateName = hybridModel.hybridEncoder.getModeOfNode(node)
-                    val c1Val = c1Variable.thresholds[(decoded[0])]
-                    val c2Val = c2Variable.thresholds[decoded[1]]
-                    val mVal = mVariable.thresholds[decoded[2]]
-                    val rpVal = rpVariable.thresholds[decoded[3]]
-                    val t1Val = t1Variable.thresholds[decoded[4]]
-                    val t2Val = t2Variable.thresholds[decoded[5]]
-                    val rVal = rVariable.thresholds[decoded[6]]
+                // File with valid initial states + relevant params
+                Paths.get("resources", "diauxShift", "testResults", "pathAllModes_${i}parallelism.txt").toFile().printWriter().use { out ->
+                    out.println("Verified formula: $formula")
+                    out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
-                    // Not sure if params.ToString() gonna work
-                    out.println("State $stateName; Init node: c1:$c1Val, c2:$c2Val, m:$mVal, rp:$rpVal, t1:$t1Val, t2:$t2Val, r:$rVal; params: ${params.toString()}")
+                    r.getValue("onOn_toOnOff")[0].entries().asSequence().forEach { (node, params) ->
+                        val decoded =  hybridModel.hybridEncoder.decodeNode(node)
+                        val stateName = hybridModel.hybridEncoder.getModeOfNode(node)
+                        val c1Val = c1Variable.thresholds[(decoded[0])]
+                        val c2Val = c2Variable.thresholds[decoded[1]]
+                        val mVal = mVariable.thresholds[decoded[2]]
+                        val rpVal = rpVariable.thresholds[decoded[3]]
+                        val t1Val = t1Variable.thresholds[decoded[4]]
+                        val t2Val = t2Variable.thresholds[decoded[5]]
+                        val rVal = rVariable.thresholds[decoded[6]]
+
+                        // Not sure if params.ToString() gonna work
+                        out.println("State $stateName; Init node: c1:$c1Val, c2:$c2Val, m:$mVal, rp:$rpVal, t1:$t1Val, t2:$t2Val, r:$rVal; params: ${params.toString()}")
+                    }
                 }
-            }
 
-            // File with json
-            Paths.get("resources", "diauxShift", "testResults", "model.json").toFile().printWriter().use { out ->
-                out.println(printJsonHybridModelResults(hybridModel, r))
-            }
+                // File with json
+                Paths.get("resources", "diauxShift", "testResults", "model.json").toFile().printWriter().use { out ->
+                    out.println(printJsonHybridModelResults(hybridModel, r))
+                }
 
-            assertTrue(r.getValue("onOn_toOnOff")[0].entries().asSequence().any() && r.getValue("onOn_toOnOff")[0].entries().asSequence().all{it.second.isNotEmpty()})
+                assertTrue(r.getValue("onOn_toOnOff")[0].entries().asSequence().any() && r.getValue("onOn_toOnOff")[0].entries().asSequence().all{it.second.isNotEmpty()})
+
+            }
         }
     }
 
