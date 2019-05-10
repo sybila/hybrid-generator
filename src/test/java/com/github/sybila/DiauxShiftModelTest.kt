@@ -90,7 +90,8 @@ class DiauxShiftModelTest {
                     out.println("Verified formula: $formula")
                     out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
-                    r.getValue("onOn_toOnOff").map { it.entries().asSequence() }.asSequence().flatten().forEach { (node, params) ->
+                    val allResults = r.getValue("onOn_toOnOff").map { it.entries().asSequence() }.asSequence().flatten()
+                    allResults.forEach { (node, params) ->
                         val decoded =  hybridModel.hybridEncoder.decodeNode(node)
                         val stateName = hybridModel.hybridEncoder.getModeOfNode(node)
                         val c1Val = c1Variable.thresholds[(decoded[0])]
@@ -104,15 +105,13 @@ class DiauxShiftModelTest {
                         // Not sure if params.ToString() gonna work
                         out.println("State $stateName; Init node: c1:$c1Val, c2:$c2Val, m:$mVal, rp:$rpVal, t1:$t1Val, t2:$t2Val, r:$rVal; params: ${params.toString()}")
                     }
+                    assertTrue(allResults.any() && allResults.all{it.second.isNotEmpty()})
                 }
 
                 // File with json
                 Paths.get("resources", "diauxShift", "testResults", "model.json").toFile().printWriter().use { out ->
                     out.println(printJsonHybridModelResults(hybridModel, r))
                 }
-
-                assertTrue(r.getValue("onOn_toOnOff")[0].entries().asSequence().any() && r.getValue("onOn_toOnOff")[0].entries().asSequence().all{it.second.isNotEmpty()})
-
             }
         }
     }
