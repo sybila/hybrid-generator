@@ -90,7 +90,7 @@ class DiauxShiftModelTest {
                     out.println("Verified formula: $formula")
                     out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
-                    val allResults = r.getValue("onOn_toOnOff").map { it.entries().asSequence() }.asSequence().flatten()
+                    val allResults = r.getValue("onOn_toOnOff").map { it.entries().asSequence() }.asSequence().flatten().toList()
                     allResults.forEach { (node, params) ->
                         val decoded =  hybridModel.hybridEncoder.decodeNode(node)
                         val stateName = hybridModel.hybridEncoder.getModeOfNode(node)
