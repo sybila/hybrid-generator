@@ -29,7 +29,7 @@ class DiauxShiftModelTest {
     private val toOnOnCondition = listOf(c1AboveThreshold, rpBelowThreshold)
     private val toOffOffCondition = listOf(c1BelowThreshold, rpAboveThreshold)
 
-    private val odeBuilder = HybridModelBuilder()
+    private val modelBuilder = HybridModelBuilder()
             .withModesWithConjunctionInvariants(
                     listOf("offOff", "offOn", "onOff", "onOn"),
                     dataPath,
@@ -57,19 +57,19 @@ class DiauxShiftModelTest {
             .withTransitionWithConjunctionCondition("onOff", "offOff", toOffOffCondition)
             .withTransitionWithConjunctionCondition("onOn", "offOff", toOffOffCondition)
 
-    private val c1Variable = odeBuilder.variables[0]
-    private val c2Variable = odeBuilder.variables[1]
-    private val mVariable = odeBuilder.variables[2]
-    private val rpVariable = odeBuilder.variables[3]
-    private val t1Variable = odeBuilder.variables[4]
-    private val t2Variable = odeBuilder.variables[5]
-    private val rVariable = odeBuilder.variables[6]
+    private val c1Variable = modelBuilder.variables[0]
+    private val c2Variable = modelBuilder.variables[1]
+    private val mVariable = modelBuilder.variables[2]
+    private val rpVariable = modelBuilder.variables[3]
+    private val t1Variable = modelBuilder.variables[4]
+    private val t2Variable = modelBuilder.variables[5]
+    private val rVariable = modelBuilder.variables[6]
 
 
     @Test
     fun pathThroughAllModes() {
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
-        val hybridModel = odeBuilder.withSolver(solver).build()
+        val hybridModel = modelBuilder.withSolver(solver).build()
 
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
 
@@ -77,11 +77,12 @@ class DiauxShiftModelTest {
 
         for (i in parallelism) {
             val models = (0 until i).map {
-                odeBuilder.withSolver(solver).build()
+                modelBuilder.withSolver(solver).build()
             }.asUniformPartitions()
             Checker(models.connectWithSharedMemory()).use { checker ->
+                val huctlFormula = HUCTLParser().parse(formula)
                 val startTime = System.currentTimeMillis()
-                val r = checker.verify(HUCTLParser().parse(formula))
+                val r = checker.verify(huctlFormula)
                 val elapsedTime = System.currentTimeMillis() - startTime
 
                 // File with valid initial states + relevant params
@@ -89,7 +90,7 @@ class DiauxShiftModelTest {
                     out.println("Verified formula: $formula")
                     out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
-                    r.getValue("onOn_toOnOff")[0].entries().asSequence().forEach { (node, params) ->
+                    r.getValue("onOn_toOnOff").map { it.entries().asSequence() }.asSequence().flatten().forEach { (node, params) ->
                         val decoded =  hybridModel.hybridEncoder.decodeNode(node)
                         val stateName = hybridModel.hybridEncoder.getModeOfNode(node)
                         val c1Val = c1Variable.thresholds[(decoded[0])]
@@ -120,7 +121,7 @@ class DiauxShiftModelTest {
     @Test
     fun synthesis_offOffUnreachable() {
         val solver = RectangleSolver(Rectangle(doubleArrayOf()))
-        val hybridModel = odeBuilder.withSolver(solver).build()
+        val hybridModel = modelBuilder.withSolver(solver).build()
 
         val offOffUnreachable = "C_2 > 29 && C_2 < 31 && M > 39 && M < 41 && RP < 0.4 && T_1 < 5 && T_2 < 2 && R > 2 && R < 4 && mode == onOn && (AG mode != offOff)"
 
