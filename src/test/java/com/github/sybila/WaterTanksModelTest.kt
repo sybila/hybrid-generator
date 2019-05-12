@@ -4,9 +4,10 @@ import com.github.sybila.checker.SequentialChecker
 import com.github.sybila.huctl.HUCTLParser
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleSolver
-import com.github.sybila.ode.model.Parser
 import org.junit.Test
 import java.nio.file.Paths
+import java.text.SimpleDateFormat
+import java.util.*
 import kotlin.test.assertTrue
 
 class WaterTanksModelTest {
@@ -35,8 +36,11 @@ class WaterTanksModelTest {
     fun parameterSynthesis() {
         val formula = HUCTLParser().formula("mode == water1Flow  && w1 < 0.0 && w2 < 0.0 && AG (mode != bad)")
         SequentialChecker(hybridModel).use { checker ->
+            val startTime = System.currentTimeMillis()
             val r = checker.verify(formula)
+            val elapsedTime = System.currentTimeMillis() - startTime
             r.entries().forEach { (node, params) ->
+                println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
                 val decoded = hybridModel.hybridEncoder.decodeNode(node)
                 val state = hybridModel.hybridEncoder.getModeOfNode(node)
                 println("State $state; w1: ${w1Variable.thresholds[decoded[0]]}: w2: ${w1Variable.thresholds[decoded[1]]} ${params.first()}")

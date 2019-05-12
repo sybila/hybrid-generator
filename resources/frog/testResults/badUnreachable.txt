@@ -1,2 +1,2 @@
-Verified formula: v > 0 && x < 0.00 && y < 0.00 && mode == jump && !(EF mode == bad)
-Elapsed time [mm:ss:SSS]: 00:17:362
+Verified formula: v > 0 && x <= 0 && y <= 0 && mode == jump && AG mode != bad
+Elapsed time [mm:ss:SSS]: 00:24:895

@@ -65,7 +65,7 @@ class FrogHybridModelTest {
 
     @Test
     fun synthesis_bad_state_unreachable() {
-        val badUnreachable = "v > 0 && x < 0.00 && y < 0.00 && mode == jump && !(EF mode == bad)"
+        val badUnreachable = "v > 0 && x <= 0 && y <= 0 && mode == jump && AG mode != bad"
 
         Checker(hybridModel).use { checker ->
             val startTime = System.currentTimeMillis()

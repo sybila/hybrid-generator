@@ -6,11 +6,13 @@ import com.github.sybila.checker.partition.asUniformPartitions
 import com.github.sybila.huctl.HUCTLParser
 import com.github.sybila.ode.generator.rect.Rectangle
 import com.github.sybila.ode.generator.rect.RectangleSolver
+import org.apache.commons.io.FileUtils
 import org.junit.Test
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.test.assertTrue
+
 
 class DiauxShiftModelTest {
     private val dataPath = Paths.get("resources", "diauxShift", "data.bio")
@@ -65,15 +67,15 @@ class DiauxShiftModelTest {
     private val t2Variable = modelBuilder.variables[5]
     private val rVariable = modelBuilder.variables[6]
 
+    private val parallelism = intArrayOf(1, 2, 3, 4, 5, 6, 7, 8)
+
 
     @Test
-    fun pathThroughAllModes() {
+    fun pathThroughAllModes_multithread_correctness() {
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
         val hybridModel = modelBuilder.withSolver(solver).build()
 
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
-
-        val parallelism = intArrayOf(1, 2, 4, 8, 16, 32, 64)
 
         for (i in parallelism) {
             val models = (0 until i).map {
@@ -81,15 +83,10 @@ class DiauxShiftModelTest {
             }.asUniformPartitions()
             Checker(models.connectWithSharedMemory()).use { checker ->
                 val huctlFormula = HUCTLParser().parse(formula)
-                val startTime = System.currentTimeMillis()
                 val r = checker.verify(huctlFormula)
-                val elapsedTime = System.currentTimeMillis() - startTime
 
-                // File with valid initial states + relevant params
                 Paths.get("resources", "diauxShift", "testResults", "pathAllModes_${i}parallelism.txt").toFile().printWriter().use { out ->
                     out.println("Verified formula: $formula")
-                    out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
-
                     val allResults = r.getValue("onOn_toOnOff").map { it.entries().asSequence() }.asSequence().flatten().toList()
                     allResults.forEach { (node, params) ->
                         val decoded =  hybridModel.hybridEncoder.decodeNode(node)
@@ -102,19 +99,55 @@ class DiauxShiftModelTest {
                         val t2Val = t2Variable.thresholds[decoded[5]]
                         val rVal = rVariable.thresholds[decoded[6]]
 
-                        // Not sure if params.ToString() gonna work
                         out.println("State $stateName; Init node: c1:$c1Val, c2:$c2Val, m:$mVal, rp:$rpVal, t1:$t1Val, t2:$t2Val, r:$rVal; params: ${params.toString()}")
                     }
                     assertTrue(allResults.any() && allResults.all{it.second.isNotEmpty()})
                 }
 
-                // File with json
                 Paths.get("resources", "diauxShift", "testResults", "model.json").toFile().printWriter().use { out ->
                     out.println(printJsonHybridModelResults(hybridModel, r))
                 }
             }
         }
+
+        for (i in parallelism) {
+            val file1 = Paths.get("resources", "diauxShift", "testResults", "pathAllModes_${parallelism[0]}parallelism.txt").toFile()
+            val file2 = Paths.get("resources", "diauxShift", "testResults", "pathAllModes_${i}parallelism.txt").toFile()
+            val areFilesEqual = FileUtils.contentEquals(file1, file2)
+            assertTrue { areFilesEqual }
+        }
     }
+
+
+    @Test
+    fun pathThroughAllModes_performance() {
+        val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
+        val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
+
+        Paths.get("resources", "diauxShift", "testResults", "pathAllModes_performance.csv").toFile().printWriter().use { out ->
+            out.println(parallelism.map{it.toString()}.joinToString(separator = ", "))
+            for (_x in 0..20) {
+                val runResults = mutableListOf<String>()
+                for (i in parallelism) {
+                    val models = (0 until i).map {
+                        modelBuilder.withSolver(solver).build()
+                    }.asUniformPartitions()
+                    Checker(models.connectWithSharedMemory()).use { checker ->
+                        val huctlFormula = HUCTLParser().parse(formula)
+                        val startTime = System.currentTimeMillis()
+                        val r = checker.verify(huctlFormula)
+                        val elapsedTime = System.currentTimeMillis() - startTime
+                        runResults.add(elapsedTime.toString())
+
+                        val allResults = r.getValue("onOn_toOnOff").map { it.entries().asSequence() }.asSequence().flatten().toList()
+                        assertTrue(allResults.any() && allResults.all{it.second.isNotEmpty()})
+                    }
+                }
+                out.println(runResults.joinToString(separator = ", "))
+            }
+        }
+    }
+
 
 
     @Test
