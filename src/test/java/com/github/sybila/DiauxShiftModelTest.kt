@@ -123,6 +123,7 @@ class DiauxShiftModelTest {
     fun pathThroughAllModes_performance() {
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
+        val huctlFormula = HUCTLParser().parse(formula)
 
         printToPerfResults(parallelism.map{it.toString()}.joinToString(separator = ", "))
         for (_x in 0..20) {
@@ -132,7 +133,6 @@ class DiauxShiftModelTest {
                     modelBuilder.withSolver(solver).build()
                 }.asUniformPartitions()
                 Checker(models.connectWithSharedMemory()).use { checker ->
-                    val huctlFormula = HUCTLParser().parse(formula)
                     val startTime = System.currentTimeMillis()
                     val r = checker.verify(huctlFormula)
                     val elapsedTime = System.currentTimeMillis() - startTime
@@ -149,9 +149,7 @@ class DiauxShiftModelTest {
 
     private fun printToPerfResults(str: String)
     {
-        Paths.get("resources", "diauxShift", "testResults", "pathAllModes_performance.csv").toFile().printWriter().use { out ->
-            out.println(str)
-        }
+        Paths.get("resources", "diauxShift", "testResults", "pathAllModes_performance.csv").toFile().appendText(str + System.lineSeparator())
     }
 
     @Test
