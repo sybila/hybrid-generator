@@ -124,31 +124,35 @@ class DiauxShiftModelTest {
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
 
-        Paths.get("resources", "diauxShift", "testResults", "pathAllModes_performance.csv").toFile().printWriter().use { out ->
-            out.println(parallelism.map{it.toString()}.joinToString(separator = ", "))
-            for (_x in 0..20) {
-                val runResults = mutableListOf<String>()
-                for (i in parallelism) {
-                    val models = (0 until i).map {
-                        modelBuilder.withSolver(solver).build()
-                    }.asUniformPartitions()
-                    Checker(models.connectWithSharedMemory()).use { checker ->
-                        val huctlFormula = HUCTLParser().parse(formula)
-                        val startTime = System.currentTimeMillis()
-                        val r = checker.verify(huctlFormula)
-                        val elapsedTime = System.currentTimeMillis() - startTime
-                        runResults.add(elapsedTime.toString())
+        printToPerfResults(parallelism.map{it.toString()}.joinToString(separator = ", "))
+        for (_x in 0..20) {
+            val runResults = mutableListOf<String>()
+            for (i in parallelism) {
+                val models = (0 until i).map {
+                    modelBuilder.withSolver(solver).build()
+                }.asUniformPartitions()
+                Checker(models.connectWithSharedMemory()).use { checker ->
+                    val huctlFormula = HUCTLParser().parse(formula)
+                    val startTime = System.currentTimeMillis()
+                    val r = checker.verify(huctlFormula)
+                    val elapsedTime = System.currentTimeMillis() - startTime
+                    runResults.add(elapsedTime.toString())
 
-                        val allResults = r.getValue("onOn_toOnOff").map { it.entries().asSequence() }.asSequence().flatten().toList()
-                        assertTrue(allResults.any() && allResults.all{it.second.isNotEmpty()})
-                    }
+                    val allResults = r.getValue("onOn_toOnOff").map { it.entries().asSequence() }.asSequence().flatten().toList()
+                    assertTrue(allResults.any() && allResults.all{it.second.isNotEmpty()})
                 }
-                out.println(runResults.joinToString(separator = ", "))
             }
+            printToPerfResults(runResults.joinToString(separator = ", "))
         }
     }
 
 
+    private fun printToPerfResults(str: String)
+    {
+        Paths.get("resources", "diauxShift", "testResults", "pathAllModes_performance.csv").toFile().printWriter().use { out ->
+            out.println(str)
+        }
+    }
 
     @Test
     fun synthesis_offOffUnreachable() {
