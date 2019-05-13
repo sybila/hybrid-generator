@@ -1,6 +1,6 @@
 VARS: C_1, C_2, M, RP, T_1, T_2, R
 
-PARAMS: kd_RP,0,1, kd_T2,0,1
+PARAMS: kd_RP,0,1; kd_T2,0,1
 
 VAR_POINTS: C_1:1500,3;C_2:1500,3;M:1500,3
 
