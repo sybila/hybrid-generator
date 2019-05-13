@@ -67,12 +67,12 @@ class DiauxShiftModelTest {
     private val t2Variable = modelBuilder.variables[5]
     private val rVariable = modelBuilder.variables[6]
 
-    private val parallelism = intArrayOf(1, 2, 3, 4, 5, 6, 7, 8)
+    private val parallelism = intArrayOf(1, 2, 4, 8)
 
 
     @Test
     fun pathThroughAllModes_multithread_correctness() {
-        val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
+        val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0, 0.0, 1.0)))
         val hybridModel = modelBuilder.withSolver(solver).build()
 
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
