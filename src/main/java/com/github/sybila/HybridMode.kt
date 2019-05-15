@@ -16,7 +16,7 @@ class HybridMode(
         val odeModel: OdeModel,
         val invariantCondition: HybridCondition
 ) {
-    val rectangleOdeModel = RectangleOdeModel(odeModel)
+    val rectangleOdeModel = ThreadLocal.withInitial { RectangleOdeModel(odeModel) }
     init {
         if (invariantCondition is ParameterHybridCondition)
             throw IllegalArgumentException("Parametrized hybrid condition is not supported in invariants of hybrid modes")
