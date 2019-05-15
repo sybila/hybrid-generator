@@ -1,6 +1,6 @@
 package com.github.sybila
 
-import com.github.sybila.ode.generator.rect.RectangleOdeModel
+import com.github.sybila.algorithm.RectangleOdeModel
 import com.github.sybila.ode.model.OdeModel
 import java.lang.IllegalArgumentException
 
@@ -16,7 +16,7 @@ class HybridMode(
         val odeModel: OdeModel,
         val invariantCondition: HybridCondition
 ) {
-    val rectangleOdeModel = ThreadLocal.withInitial { RectangleOdeModel(odeModel) }
+    val rectangleOdeModel = RectangleOdeModel(odeModel)
     init {
         if (invariantCondition is ParameterHybridCondition)
             throw IllegalArgumentException("Parametrized hybrid condition is not supported in invariants of hybrid modes")

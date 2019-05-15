@@ -249,7 +249,7 @@ class HybridModel(
                                     currentMode: HybridMode, node: Int, isSuccessors: Boolean) {
         val nodeInStateModel = hybridEncoder.nodeInLocalMode(node)
 
-        with(currentMode.rectangleOdeModel.get()) {
+        with(currentMode.rectangleOdeModel) {
             val localSuccessors = nodeInStateModel
                     .successors(isSuccessors)
                     .asSequence()

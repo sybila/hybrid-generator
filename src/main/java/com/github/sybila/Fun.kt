@@ -55,7 +55,7 @@ private fun modelBuilder(): HybridModelBuilder = HybridModelBuilder()
         .withTransitionWithConjunctionCondition("onOff", "offOff", toOffOffCondition)
         .withTransitionWithConjunctionCondition("onOn", "offOff", toOffOffCondition)
 
-private val parallelism = intArrayOf(1)
+private val parallelism = intArrayOf(4)
 
 fun main() {
     val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
