@@ -128,11 +128,12 @@ class DiauxShiftModelTest {
 
     @Test
     fun pathThroughAllModes_performance_smallData1Param() {
+        val testName = "smallData1Param"
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
         val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
 
-        printToPerfResults(parallelism.map{it.toString()}.joinToString(separator = ", "))
+        printToPerfResults(testName, parallelism.map{it.toString()}.joinToString(separator = ", "))
         for (_x in 0..6) {
             val runResults = mutableListOf<String>()
             for (i in parallelism) {
@@ -148,18 +149,19 @@ class DiauxShiftModelTest {
                     assertTrue( (0 until graph.stateCount).any { result.get(it).isNotEmpty() })
                 }
             }
-            printToPerfResults(runResults.joinToString(separator = ", "))
+            printToPerfResults(testName, runResults.joinToString(separator = ", "))
         }
     }
 
 
     @Test
     fun pathThroughAllModes_performance_smallData2Params() {
+        val testName = "smallData2Params"
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
         val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
 
-        printToPerfResults(parallelism.map{it.toString()}.joinToString(separator = ", "))
+        printToPerfResults(testName, parallelism.map{it.toString()}.joinToString(separator = ", "))
         for (_x in 0..6) {
             val runResults = mutableListOf<String>()
             for (i in parallelism) {
@@ -175,18 +177,19 @@ class DiauxShiftModelTest {
                     assertTrue( (0 until graph.stateCount).any { result.get(it).isNotEmpty() })
                 }
             }
-            printToPerfResults(runResults.joinToString(separator = ", "))
+            printToPerfResults(testName, runResults.joinToString(separator = ", "))
         }
     }
 
 
     @Test
     fun pathThroughAllModes_performance_data1Param() {
+        val testName = "bigData1Param"
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
         val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
 
-        printToPerfResults(parallelism.map{it.toString()}.joinToString(separator = ", "))
+        printToPerfResults(testName, parallelism.map{it.toString()}.joinToString(separator = ", "))
         for (_x in 0..6) {
             val runResults = mutableListOf<String>()
             for (i in parallelism) {
@@ -202,18 +205,19 @@ class DiauxShiftModelTest {
                     assertTrue( (0 until graph.stateCount).any { result.get(it).isNotEmpty() })
                 }
             }
-            printToPerfResults(runResults.joinToString(separator = ", "))
+            printToPerfResults(testName, runResults.joinToString(separator = ", "))
         }
     }
 
 
     @Test
     fun pathThroughAllModes_performance_data2Params() {
+        val testName = "bigData2Params"
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
         val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
 
-        printToPerfResults(parallelism.map{it.toString()}.joinToString(separator = ", "))
+        printToPerfResults(testName, parallelism.map{it.toString()}.joinToString(separator = ", "))
         for (_x in 0..6) {
             val runResults = mutableListOf<String>()
             for (i in parallelism) {
@@ -229,14 +233,14 @@ class DiauxShiftModelTest {
                     assertTrue( (0 until graph.stateCount).any { result.get(it).isNotEmpty() })
                 }
             }
-            printToPerfResults(runResults.joinToString(separator = ", "))
+            printToPerfResults(testName, runResults.joinToString(separator = ", "))
         }
     }
 
 
-    private fun printToPerfResults(str: String)
+    private fun printToPerfResults(test: String, str: String)
     {
-        Paths.get("resources", "diauxShift", "testResults", "pathAllModes_performance.csv").toFile().appendText(str + System.lineSeparator())
+        Paths.get("resources", "diauxShift", "testResults", "pathAllModes_performance_$test.csv").toFile().appendText(str + System.lineSeparator())
     }
 
     @Test
