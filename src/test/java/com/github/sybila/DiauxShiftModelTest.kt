@@ -9,6 +9,7 @@ import com.github.sybila.ode.generator.rect.RectangleSolver
 import com.github.sybila.sharedmem.ColouredGraph
 import org.apache.commons.io.FileUtils
 import org.junit.Test
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
 import java.util.*
@@ -16,7 +17,11 @@ import kotlin.test.assertTrue
 
 
 class DiauxShiftModelTest {
-    private val dataPath = Paths.get("resources", "diauxShift", "data.bio")
+    private val dataPath1Param = Paths.get("resources", "diauxShift", "data1Param.bio")
+    private val smallDataPath1Param = Paths.get("resources", "diauxShift", "smallData1Param.bio")
+    private val dataPath2Params = Paths.get("resources", "diauxShift", "data2Params.bio")
+    private val smallDataPath2Params = Paths.get("resources", "diauxShift", "smallData2Params.bio")
+
     private val offOffPath = Paths.get("resources", "diauxShift", "RPoffT2off.bio")
     private val offOnPath = Paths.get("resources", "diauxShift", "RPoffT2on.bio")
     private val onOffPath = Paths.get("resources", "diauxShift", "RPonT2off.bio")
@@ -32,10 +37,10 @@ class DiauxShiftModelTest {
     private val toOnOnCondition = listOf(c1AboveThreshold, rpBelowThreshold)
     private val toOffOffCondition = listOf(c1BelowThreshold, rpAboveThreshold)
 
-    private fun modelBuilder() = HybridModelBuilder()
+    private fun modelBuilder(dataFile: Path) = HybridModelBuilder()
             .withModesWithConjunctionInvariants(
                     listOf("offOff", "offOn", "onOff", "onOn"),
-                    dataPath,
+                    dataFile,
                     listOf(offOffPath, offOnPath, onOffPath, onOnPath),
                     listOf(
                             listOf(c1BelowThreshold, rpAboveThreshold),
@@ -60,27 +65,28 @@ class DiauxShiftModelTest {
             .withTransitionWithConjunctionCondition("onOff", "offOff", toOffOffCondition)
             .withTransitionWithConjunctionCondition("onOn", "offOff", toOffOffCondition)
 
-    private val c1Variable = modelBuilder().variables[0]
-    private val c2Variable = modelBuilder().variables[1]
-    private val mVariable = modelBuilder().variables[2]
-    private val rpVariable = modelBuilder().variables[3]
-    private val t1Variable = modelBuilder().variables[4]
-    private val t2Variable = modelBuilder().variables[5]
-    private val rVariable = modelBuilder().variables[6]
 
-    private val parallelism = intArrayOf(1, 2, 4)
+    private val parallelism = intArrayOf(1, 2, 4, 8, 16, 32)
 
 
     @Test
     fun pathThroughAllModes_multithread_correctness() {
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0, 0.0, 1.0)))
-        val hybridModel = modelBuilder().withSolver(solver).build()
+        val hybridModel = modelBuilder(smallDataPath2Params).withSolver(solver).build()
+
+        val c1Variable = hybridModel.variables[0]
+        val c2Variable = hybridModel.variables[1]
+        val mVariable  = hybridModel.variables[2]
+        val rpVariable = hybridModel.variables[3]
+        val t1Variable = hybridModel.variables[4]
+        val t2Variable = hybridModel.variables[5]
+        val rVariable  = hybridModel.variables[6]
 
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
 
         for (i in parallelism) {
             val models = (0 until i).map {
-                modelBuilder().withSolver(solver).build()
+                modelBuilder(smallDataPath2Params).withSolver(solver).build()
             }.asUniformPartitions()
             Checker(models.connectWithSharedMemory()).use { checker ->
                 val huctlFormula = HUCTLParser().parse(formula)
@@ -121,17 +127,98 @@ class DiauxShiftModelTest {
 
 
     @Test
-    fun pathThroughAllModes_performance() {
+    fun pathThroughAllModes_performance_smallData1Param() {
         val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
         val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
         val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
 
         printToPerfResults(parallelism.map{it.toString()}.joinToString(separator = ", "))
-        for (_x in 0..20) {
+        for (_x in 0..6) {
             val runResults = mutableListOf<String>()
             for (i in parallelism) {
                 val graph = ColouredGraph(
-                        parallelism = i, model = modelBuilder().withSolver(solver).build(), solver = solver
+                        parallelism = i, model = modelBuilder(smallDataPath1Param).withSolver(solver).build(), solver = solver
+                )
+                graph.use {
+                    val startTime = System.currentTimeMillis()
+                    val result = graph.checkCTLFormula(huctlFormula)
+                    val elapsedTime = System.currentTimeMillis() - startTime
+                    runResults.add(elapsedTime.toString())
+                    System.err.println("Elapsed: $elapsedTime for $i")
+                    assertTrue( (0 until graph.stateCount).any { result.get(it).isNotEmpty() })
+                }
+            }
+            printToPerfResults(runResults.joinToString(separator = ", "))
+        }
+    }
+
+
+    @Test
+    fun pathThroughAllModes_performance_smallData2Params() {
+        val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
+        val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
+        val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
+
+        printToPerfResults(parallelism.map{it.toString()}.joinToString(separator = ", "))
+        for (_x in 0..6) {
+            val runResults = mutableListOf<String>()
+            for (i in parallelism) {
+                val graph = ColouredGraph(
+                        parallelism = i, model = modelBuilder(smallDataPath2Params).withSolver(solver).build(), solver = solver
+                )
+                graph.use {
+                    val startTime = System.currentTimeMillis()
+                    val result = graph.checkCTLFormula(huctlFormula)
+                    val elapsedTime = System.currentTimeMillis() - startTime
+                    runResults.add(elapsedTime.toString())
+                    System.err.println("Elapsed: $elapsedTime for $i")
+                    assertTrue( (0 until graph.stateCount).any { result.get(it).isNotEmpty() })
+                }
+            }
+            printToPerfResults(runResults.joinToString(separator = ", "))
+        }
+    }
+
+
+    @Test
+    fun pathThroughAllModes_performance_data1Param() {
+        val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
+        val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
+        val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
+
+        printToPerfResults(parallelism.map{it.toString()}.joinToString(separator = ", "))
+        for (_x in 0..6) {
+            val runResults = mutableListOf<String>()
+            for (i in parallelism) {
+                val graph = ColouredGraph(
+                        parallelism = i, model = modelBuilder(dataPath1Param).withSolver(solver).build(), solver = solver
+                )
+                graph.use {
+                    val startTime = System.currentTimeMillis()
+                    val result = graph.checkCTLFormula(huctlFormula)
+                    val elapsedTime = System.currentTimeMillis() - startTime
+                    runResults.add(elapsedTime.toString())
+                    System.err.println("Elapsed: $elapsedTime for $i")
+                    assertTrue( (0 until graph.stateCount).any { result.get(it).isNotEmpty() })
+                }
+            }
+            printToPerfResults(runResults.joinToString(separator = ", "))
+        }
+    }
+
+
+    @Test
+    fun pathThroughAllModes_performance_data2Params() {
+        val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
+        val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
+        val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
+
+        printToPerfResults(parallelism.map{it.toString()}.joinToString(separator = ", "))
+        for (_x in 0..6) {
+            val runResults = mutableListOf<String>()
+            for (i in parallelism) {
+                val graph = ColouredGraph(
+                        parallelism = i, model = modelBuilder(dataPath2Params).withSolver(solver).build(), solver = solver
                 )
                 graph.use {
                     val startTime = System.currentTimeMillis()
@@ -155,7 +242,9 @@ class DiauxShiftModelTest {
     @Test
     fun synthesis_offOffUnreachable() {
         val solver = RectangleSolver(Rectangle(doubleArrayOf()))
-        val hybridModel = modelBuilder().withSolver(solver).build()
+        val hybridModel = modelBuilder(smallDataPath1Param).withSolver(solver).build()
+
+        val c1Variable = hybridModel.variables[0]
 
         val offOffUnreachable = "C_2 > 29 && C_2 < 31 && M > 39 && M < 41 && RP < 0.4 && T_1 < 5 && T_2 < 2 && R > 2 && R < 4 && mode == onOn && (AG mode != offOff)"
 

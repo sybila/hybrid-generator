@@ -1,0 +1,20 @@
+VARS: C_1, C_2, M, RP, T_1, T_2, R
+
+PARAMS: kd_RP,0,1; kd_T2,0,1
+
+VAR_POINTS: C_1:1500,3;C_2:1500,3;M:1500,3
+
+CONSTS: k_cat1, 0.3; k_cat2, 0.2; k_R, 0.03; k_T1, 0.1; k_T2, 0.1; k_RP, 0.05; kd_R, 0.001; kd_T1, 0.001; K_C1, 1; K_C2, 1; K_RP, 1; K_T1, 1; K_T2, 1; K_R, 1
+
+THRES: C_1: 0, 1.0, 1.01, 2.9, 3.1, 29.5, 30.5, 35
+THRES: C_2: 0, 10, 29, 31, 35
+THRES: M: 0, 10, 39, 41, 55
+THRES: RP: 0, 0.4, 1, 1.01, 3
+THRES: T_1: 0, 5, 20, 50
+THRES: T_2: 0, 2, 6, 13
+THRES: R: 0, 2, 8, 16
+
+EQ: C_1 = -k_cat1 * T_1 * hillp(C_1, K_C1, 1, 0, 1)
+EQ: C_2 = -k_cat2 * T_2 * hillp(C_2, K_C2, 1, 0, 1)
+EQ: R = k_R * R * hillp(M, K_R, 1, 0, 1) - (kd_R * R)
+EQ: T_1 = k_T1 * R * hillp(M, K_T1, 1, 0, 1) - (kd_T1 * T_1)
