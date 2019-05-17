@@ -237,7 +237,6 @@ class DiauxShiftModelTest {
         }
     }
 
-
     private fun printToPerfResults(test: String, str: String)
     {
         Paths.get("resources", "diauxShift", "testResults", "pathAllModes_performance_$test.csv").toFile().appendText(str + System.lineSeparator())
@@ -262,10 +261,10 @@ class DiauxShiftModelTest {
                 out.println("Elapsed time [mm:ss:SSS]: ${SimpleDateFormat("mm:ss:SSS").format(Date(elapsedTime))}")
 
                 r[0].entries().asSequence()
-                              .sortedBy { hybridModel.hybridEncoder.coordinate(it.first, 0) }
-                              .map { (node, _) ->  c1Variable.thresholds[(hybridModel.hybridEncoder.decodeNode(node)[0])]}
-                              .distinct()
-                              .forEach { out.println("Init c1:$it") }
+                        .sortedBy { hybridModel.hybridEncoder.coordinate(it.first, 0) }
+                        .map { (node, _) ->  c1Variable.thresholds[(hybridModel.hybridEncoder.decodeNode(node)[0])]}
+                        .distinct()
+                        .forEach { out.println("Init c1:$it") }
             }
             assertTrue(r[0].entries().asSequence().any() && r[0].entries().asSequence().all{it.second.isNotEmpty()})
         }
