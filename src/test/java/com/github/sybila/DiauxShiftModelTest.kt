@@ -66,7 +66,7 @@ class DiauxShiftModelTest {
             .withTransitionWithConjunctionCondition("onOn", "offOff", toOffOffCondition)
 
 
-    private val parallelism = intArrayOf(1, 2, 4, 8, 16, 32)
+    private val parallelism = intArrayOf(1, 2, 4)
 
 
     @Test

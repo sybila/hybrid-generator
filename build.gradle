@@ -19,7 +19,6 @@ apply plugin: 'kotlin'
 apply plugin: 'antlr'
 apply plugin: 'maven'
 apply plugin: 'jacoco'
-apply plugin: 'application'
 
 group = "com.github.sybila"
 version = '1.0.0'
@@ -84,9 +83,3 @@ tasks.withType(Test) {
     maxHeapSize = "3072m"
     jvmArgs "-Xmx3072m"
 }
-
-application {
-    mainClassName = "com.github.sybila.Main"
-}
-
-
