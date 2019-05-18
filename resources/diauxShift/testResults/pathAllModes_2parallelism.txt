@@ -1,2 +1,0 @@
-Verified formula: resources/diauxShift/props.ctl
-Elapsed time [mm:ss:SSS]: 00:21:351
