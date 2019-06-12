@@ -1,0 +1,7 @@
+EQ: t = 1
+EQ: v = stimulus + t_in_inv * h * v * v - t_in_inv * h * v * v * v - t_out_inv * v
+EQ: h = t_open_inv - t_open_inv * h
+
+# Two jumps:
+# (S) When v > V_g -> jump to M1 (voltage on)
+# When t > t_s -> jump to M4 (stimulus off)
