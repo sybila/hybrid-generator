@@ -11,16 +11,10 @@ class Main {
     companion object {
         @JvmStatic
         fun main(args : Array<String>) {
-            pathThroughAllModes_performance_smallData1Param()
-            pathThroughAllModes_performance_smallData2Params()
-            pathThroughAllModes_performance_data1Param()
-            pathThroughAllModes_performance_data2Params()
+            pathThroughAllModes_performance_bigData1Param()
         }
 
-        private val dataPath1Param = Paths.get("resources", "diauxShift", "data1Param.bio")
-        private val smallDataPath1Param = Paths.get("resources", "diauxShift", "smallData1Param.bio")
-        private val dataPath2Params = Paths.get("resources", "diauxShift", "data2Params.bio")
-        private val smallDataPath2Params = Paths.get("resources", "diauxShift", "smallData2Params.bio")
+        private val bigDataPath1Param = Paths.get("resources", "diauxShift", "bigData1Param.bio")
 
         private val offOffPath = Paths.get("resources", "diauxShift", "RPoffT2off.bio")
         private val offOnPath = Paths.get("resources", "diauxShift", "RPoffT2on.bio")
@@ -65,116 +59,29 @@ class Main {
                 .withTransitionWithConjunctionCondition("onOff", "offOff", toOffOffCondition)
                 .withTransitionWithConjunctionCondition("onOn", "offOff", toOffOffCondition)
 
-
-        private val parallelism = intArrayOf(1, 2, 4, 8, 16, 32)
-
         @JvmStatic
-        fun pathThroughAllModes_performance_smallData1Param() {
-            val testName = "smallData1Param"
+        fun pathThroughAllModes_performance_bigData1Param() {
+            val testName = "veryBigData1Param"
             val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
             val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
             val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
 
-            printToPerfResults(testName, parallelism.map{it.toString()}.joinToString(separator = ", "))
-            for (_x in 0..6) {
-                val runResults = mutableListOf<String>()
-                for (i in parallelism) {
-                    val graph = ColouredGraph(
-                            parallelism = i, model = modelBuilder(smallDataPath1Param).withSolver(solver).build(), solver = solver
-                    )
-                    graph.use {
-                        val startTime = System.currentTimeMillis()
-                        val result = graph.checkCTLFormula(huctlFormula)
-                        val elapsedTime = System.currentTimeMillis() - startTime
-                        runResults.add(elapsedTime.toString())
-                        System.err.println("Elapsed: $elapsedTime for $i")
-                    }
-                }
-                printToPerfResults(testName, runResults.joinToString(separator = ", "))
+            var runResults = "nothing"
+            val model = modelBuilder(bigDataPath1Param).withSolver(solver).build()
+            val graph = ColouredGraph(
+                    parallelism = 32, model = model, solver = solver
+            )
+            printToPerfResults(testName, "Num of states:${model.stateCount}; Num of invalid states:${model.getAllInvalidNodes().count()}")
+            graph.use {
+                val startTime = System.currentTimeMillis()
+                val result = graph.checkCTLFormula(huctlFormula)
+                val elapsedTime = System.currentTimeMillis() - startTime
+                runResults = elapsedTime.toString()
+                System.err.println("Elapsed: $elapsedTime")
             }
+
+            printToPerfResults(testName, runResults)
         }
-
-
-        @JvmStatic
-        fun pathThroughAllModes_performance_smallData2Params() {
-            val testName = "smallData2Params"
-            val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
-            val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
-            val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
-
-            printToPerfResults(testName, parallelism.map{it.toString()}.joinToString(separator = ", "))
-            for (_x in 0..6) {
-                val runResults = mutableListOf<String>()
-                for (i in parallelism) {
-                    val graph = ColouredGraph(
-                            parallelism = i, model = modelBuilder(smallDataPath2Params).withSolver(solver).build(), solver = solver
-                    )
-                    graph.use {
-                        val startTime = System.currentTimeMillis()
-                        val result = graph.checkCTLFormula(huctlFormula)
-                        val elapsedTime = System.currentTimeMillis() - startTime
-                        runResults.add(elapsedTime.toString())
-                        System.err.println("Elapsed: $elapsedTime for $i")
-                    }
-                }
-                printToPerfResults(testName, runResults.joinToString(separator = ", "))
-            }
-        }
-
-
-        @JvmStatic
-        fun pathThroughAllModes_performance_data1Param() {
-            val testName = "bigData1Param"
-            val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
-            val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
-            val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
-
-            printToPerfResults(testName, parallelism.map{it.toString()}.joinToString(separator = ", "))
-            for (_x in 0..6) {
-                val runResults = mutableListOf<String>()
-                for (i in parallelism) {
-                    val graph = ColouredGraph(
-                            parallelism = i, model = modelBuilder(dataPath1Param).withSolver(solver).build(), solver = solver
-                    )
-                    graph.use {
-                        val startTime = System.currentTimeMillis()
-                        val result = graph.checkCTLFormula(huctlFormula)
-                        val elapsedTime = System.currentTimeMillis() - startTime
-                        runResults.add(elapsedTime.toString())
-                        System.err.println("Elapsed: $elapsedTime for $i")
-                    }
-                }
-                printToPerfResults(testName, runResults.joinToString(separator = ", "))
-            }
-        }
-
-
-        @JvmStatic
-        fun pathThroughAllModes_performance_data2Params() {
-            val testName = "bigData2Params"
-            val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
-            val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
-            val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
-
-            printToPerfResults(testName, parallelism.map{it.toString()}.joinToString(separator = ", "))
-            for (_x in 0..6) {
-                val runResults = mutableListOf<String>()
-                for (i in parallelism) {
-                    val graph = ColouredGraph(
-                            parallelism = i, model = modelBuilder(dataPath2Params).withSolver(solver).build(), solver = solver
-                    )
-                    graph.use {
-                        val startTime = System.currentTimeMillis()
-                        val result = graph.checkCTLFormula(huctlFormula)
-                        val elapsedTime = System.currentTimeMillis() - startTime
-                        runResults.add(elapsedTime.toString())
-                        System.err.println("Elapsed: $elapsedTime for $i")
-                    }
-                }
-                printToPerfResults(testName, runResults.joinToString(separator = ", "))
-            }
-        }
-
 
         private fun printToPerfResults(test: String, str: String)
         {
