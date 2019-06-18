@@ -68,23 +68,22 @@ class Main {
             val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
             val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
 
+            val results = mutableListOf<String>()
             for (i in 0..5) {
                 var runResults = "nothing"
                 val model = modelBuilder(dataPath3Param).withSolver(solver).build()
                 val graph = ColouredGraph(
                         parallelism = 16, model = model, solver = solver
                 )
-                printToPerfResults(testName, "Num of states:${model.stateCount}; Num of invalid states:${model.getAllInvalidNodes().count()}")
                 graph.use {
                     val startTime = System.currentTimeMillis()
                     val result = graph.checkCTLFormula(huctlFormula)
                     val elapsedTime = System.currentTimeMillis() - startTime
                     runResults = elapsedTime.toString()
-                    System.err.println("Elapsed: $elapsedTime")
+                    results.add(runResults)
                 }
                 printToPerfResults(testName, runResults)
             }
-
         }
 
         @JvmStatic
@@ -94,21 +93,20 @@ class Main {
             val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
             val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
 
-            var runResults = "nothing"
+            val results = mutableListOf<String>()
             for (i in 0..5) {
+                var runResults = "nothing"
                 val model = modelBuilder(dataPath4Param).withSolver(solver).build()
                 val graph = ColouredGraph(
                         parallelism = 16, model = model, solver = solver
                 )
-                printToPerfResults(testName, "Num of states:${model.stateCount}; Num of invalid states:${model.getAllInvalidNodes().count()}")
                 graph.use {
                     val startTime = System.currentTimeMillis()
                     val result = graph.checkCTLFormula(huctlFormula)
                     val elapsedTime = System.currentTimeMillis() - startTime
                     runResults = elapsedTime.toString()
-                    System.err.println("Elapsed: $elapsedTime")
+                    results.add(runResults)
                 }
-
                 printToPerfResults(testName, runResults)
             }
         }
