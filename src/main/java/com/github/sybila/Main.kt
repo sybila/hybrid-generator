@@ -11,10 +11,12 @@ class Main {
     companion object {
         @JvmStatic
         fun main(args : Array<String>) {
-            pathThroughAllModes_performance_bigData1Param()
+            pathThroughAllModes_performance_data3Param()
+            pathThroughAllModes_performance_data4Param()
         }
 
-        private val bigDataPath1Param = Paths.get("resources", "diauxShift", "bigData1Param.bio")
+        private val dataPath3Param = Paths.get("resources", "diauxShift", "data3Params.bio")
+        private val dataPath4Param = Paths.get("resources", "diauxShift", "data4Params.bio")
 
         private val offOffPath = Paths.get("resources", "diauxShift", "RPoffT2off.bio")
         private val offOnPath = Paths.get("resources", "diauxShift", "RPoffT2on.bio")
@@ -60,27 +62,55 @@ class Main {
                 .withTransitionWithConjunctionCondition("onOn", "offOff", toOffOffCondition)
 
         @JvmStatic
-        fun pathThroughAllModes_performance_bigData1Param() {
-            val testName = "veryBigData1Param"
-            val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0)))
+        fun pathThroughAllModes_performance_data3Param() {
+            val testName = "bigData3Params"
+            val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0, 0.0, 1.0, 0.0, 1.0)))
+            val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
+            val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
+
+            for (i in 0..5) {
+                var runResults = "nothing"
+                val model = modelBuilder(dataPath3Param).withSolver(solver).build()
+                val graph = ColouredGraph(
+                        parallelism = 16, model = model, solver = solver
+                )
+                printToPerfResults(testName, "Num of states:${model.stateCount}; Num of invalid states:${model.getAllInvalidNodes().count()}")
+                graph.use {
+                    val startTime = System.currentTimeMillis()
+                    val result = graph.checkCTLFormula(huctlFormula)
+                    val elapsedTime = System.currentTimeMillis() - startTime
+                    runResults = elapsedTime.toString()
+                    System.err.println("Elapsed: $elapsedTime")
+                }
+                printToPerfResults(testName, runResults)
+            }
+
+        }
+
+        @JvmStatic
+        fun pathThroughAllModes_performance_data4Param() {
+            val testName = "bigData4Params"
+            val solver = RectangleSolver(Rectangle(doubleArrayOf(0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 2.0)))
             val formula = Paths.get("resources", "diauxShift", "props.ctl").toFile()
             val huctlFormula = HUCTLParser().parse(formula)["onOn_toOnOff"]!!
 
             var runResults = "nothing"
-            val model = modelBuilder(bigDataPath1Param).withSolver(solver).build()
-            val graph = ColouredGraph(
-                    parallelism = 32, model = model, solver = solver
-            )
-            printToPerfResults(testName, "Num of states:${model.stateCount}; Num of invalid states:${model.getAllInvalidNodes().count()}")
-            graph.use {
-                val startTime = System.currentTimeMillis()
-                val result = graph.checkCTLFormula(huctlFormula)
-                val elapsedTime = System.currentTimeMillis() - startTime
-                runResults = elapsedTime.toString()
-                System.err.println("Elapsed: $elapsedTime")
-            }
+            for (i in 0..5) {
+                val model = modelBuilder(dataPath4Param).withSolver(solver).build()
+                val graph = ColouredGraph(
+                        parallelism = 16, model = model, solver = solver
+                )
+                printToPerfResults(testName, "Num of states:${model.stateCount}; Num of invalid states:${model.getAllInvalidNodes().count()}")
+                graph.use {
+                    val startTime = System.currentTimeMillis()
+                    val result = graph.checkCTLFormula(huctlFormula)
+                    val elapsedTime = System.currentTimeMillis() - startTime
+                    runResults = elapsedTime.toString()
+                    System.err.println("Elapsed: $elapsedTime")
+                }
 
-            printToPerfResults(testName, runResults)
+                printToPerfResults(testName, runResults)
+            }
         }
 
         private fun printToPerfResults(test: String, str: String)
