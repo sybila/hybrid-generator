@@ -25,6 +25,17 @@ class HybridModelBuilder() {
         return this
     }
 
+    fun withModeWithParametrizedInvariant(label: String, pathToOde: Path, conditionParamName: String, conditionVarName: String, gt: Boolean): HybridModelBuilder {
+        val odeModel = Parser().parse(pathToOde.toFile())
+        val conditionParam = odeModel.parameters.first{it.name == conditionParamName}
+        val conditionVariable = odeModel.variables.first{it.name == conditionVarName}
+        val mode = HybridMode(label, odeModel, ParameterHybridCondition(conditionVariable, conditionParam, gt))
+        modes.add(mode)
+
+        initParamsAndVars()
+        return this
+    }
+
     fun withModeWithConstantInvariant(label: String, pathToOde: Path, conditionVarName: String, conditionConstant: Double, gt: Boolean): HybridModelBuilder {
         val odeModel = Parser().parse(pathToOde.toFile())
         val conditionVariable = odeModel.variables.first{it.name == conditionVarName}

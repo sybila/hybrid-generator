@@ -47,18 +47,17 @@ class HybridModel(
         val currentMode = modesMap.getValue(hybridEncoder.getModeOfNode(this))
         val currentCoordinates = hybridEncoder.getVariableCoordinates(this)
 
-        if (!currentMode.invariantCondition.eval(currentCoordinates))
-            // It is not possible to reach the state as it does not fulfill the invariant condition of the state
-            return predecessors.iterator()
+        // There must be non-empty parameter space, which fulfills the invariant condition, return no predecessors otherwise
+        val invariantBounds = getNodeInvariantBounds(this) ?: return predecessors.iterator()
 
         // Add transitions from other modes
         val relevantJumps = transitions.filter{it.to == currentMode.label}
         for (jump in relevantJumps) {
-            addJumpPredecessors(predecessors, currentCoordinates, jump)
+            addJumpPredecessors(predecessors, currentCoordinates, jump, invariantBounds)
         }
 
         // Add transitions withing the current ODE model state
-        addLocalTransitions(predecessors, currentMode, this,false)
+        addLocalTransitions(predecessors, currentMode, this,false, invariantBounds)
 
         return predecessors.iterator()
     }
@@ -71,18 +70,18 @@ class HybridModel(
         val successors = mutableListOf<Transition<MutableSet<Rectangle>>>()
         val currentMode = modesMap.getValue(hybridEncoder.getModeOfNode(this))
         val variableCoordinates = hybridEncoder.getVariableCoordinates(this)
-        if (!currentMode.invariantCondition.eval(variableCoordinates))
-            // It is not possible to reach the state as it does not fulfill some invariant condition of the state
-            return successors.iterator()
+
+        // There must be non-empty parameter space, which fulfills the invariant condition, return no successors otherwise
+        val invariantBounds = getNodeInvariantBounds(this) ?: return successors.iterator()
 
         // Add transitions to other modes
         val relevantJumps = transitions.filter{ it.from == currentMode.label }
         for (jump in relevantJumps) {
-            addJumpSuccessors(successors, this, jump, variableCoordinates)
+            addJumpSuccessors(successors, this, jump, variableCoordinates, invariantBounds)
         }
 
         // Add transitions withing the current ODE model state
-        addLocalTransitions(successors, currentMode, this, true)
+        addLocalTransitions(successors, currentMode, this, true, invariantBounds)
 
         return successors.iterator()
     }
@@ -187,28 +186,32 @@ class HybridModel(
 
 
     private fun addJumpPredecessors(predecessors: MutableList<Transition<MutableSet<Rectangle>>>,
-                                    currentCoordinates: IntArray, jump: HybridTransition) {
+                                    currentCoordinates: IntArray, jump: HybridTransition,
+                                    invariantBounds: Rectangle) {
         if (jump.newPositions.any { currentCoordinates[variableOrder.indexOf(it.key)] != it.value })
             // Some variable does not fulfill initial valuation after the jump
             return
 
         for (node in hybridEncoder.enumerateModeNodesWithValidCoordinates(currentCoordinates, jump.from, jump.newPositions.keys.toList())) {
             val predecessorCoordinates = hybridEncoder.getVariableCoordinates(node)
-            val predecessorState = modesMap.getValue(hybridEncoder.getModeOfNode(node))
-            val predecessorStateIsValid = predecessorState.invariantCondition.eval(predecessorCoordinates)
+
+            // Predecessor must fulfill an invariant of its mode
+            val predecessorInvariantBounds = getNodeInvariantBounds(node) ?: break
 
             val canJumpFromPredecessor: Boolean
-            val bounds: MutableSet<Rectangle>
+            // Predecessor must fulfill a guard condition of the jump
+            val jumpBounds: Rectangle?
             if (jump.condition is ParameterHybridCondition) {
-                bounds = getValidParameterBounds(predecessorCoordinates, jump.condition)
-                canJumpFromPredecessor = !bounds.isEmpty()
+                jumpBounds = getValidParameterBounds(predecessorCoordinates, jump.condition)
+                canJumpFromPredecessor = jumpBounds != null
             } else {
-                bounds = mutableSetOf(Rectangle(modesMap.getValue(jump.from).odeModel.parameters.flatMap{ listOf(it.range.first, it.range.second) }.toDoubleArray()))
+                jumpBounds = getFullParamSpace()
                 canJumpFromPredecessor = jump.condition.eval(predecessorCoordinates)
             }
 
-            if (predecessorStateIsValid && canJumpFromPredecessor) {
+            if (canJumpFromPredecessor && jumpBounds != null) {
                 // Predecessor node is valid
+                var bounds = mergeBounds(invariantBounds, jumpBounds, predecessorInvariantBounds)
                 predecessors.add(Transition(node, DirectionFormula.Atom.Proposition(jump.from, Facet.NEGATIVE), bounds))
             }
         }
@@ -216,12 +219,13 @@ class HybridModel(
 
 
     private fun addJumpSuccessors(successors: MutableList<Transition<MutableSet<Rectangle>>>,
-                                  node: Int, jump: HybridTransition, variableCoordinates: IntArray) {
-        val bounds: MutableSet<Rectangle>
+                                  node: Int, jump: HybridTransition, variableCoordinates: IntArray,
+                                  invariantBounds: Rectangle) {
+        val jumpBounds: Rectangle?
         if (jump.condition is ParameterHybridCondition) {
             // Parameter in jump condition -> bounds have to be derived
-            bounds = getValidParameterBounds(variableCoordinates, jump.condition)
-            if (bounds.isEmpty())
+            jumpBounds = getValidParameterBounds(variableCoordinates, jump.condition)
+            if (jumpBounds == null)
                 // No valid parameters -> no jump successor
                 return
         }
@@ -231,30 +235,50 @@ class HybridModel(
         }
          else {
             // Can jump from current coordinates, and there are no parameters in jump -> whole param. space is valid
-            bounds = mutableSetOf(Rectangle(modesMap.getValue(jump.to).odeModel.parameters.flatMap{ listOf(it.range.first, it.range.second) }.toDoubleArray()))
+            jumpBounds = getFullParamSpace()
         }
 
         val target = hybridEncoder.shiftNodeToOtherModeWithUpdatedValues(node, jump.to, jump.newPositions)
-        val targetCoordinates = hybridEncoder.getVariableCoordinates(target)
-        val targetState = modesMap.getValue(hybridEncoder.getModeOfNode(target))
-        if (!targetState.invariantCondition.eval(targetCoordinates))
-            // Target does not fulfill invariant conditions of its state
-            return
+        // The target node must fulfill invariant of its mode
+        val targetInvariantBounds = getNodeInvariantBounds(target) ?: return
 
+        var bounds = mergeBounds(invariantBounds, jumpBounds, targetInvariantBounds)
         successors.add(Transition(target, DirectionFormula.Atom.Proposition(jump.to, Facet.POSITIVE), bounds))
     }
 
 
+    private fun getNodeInvariantBounds(node: Int): Rectangle? {
+        val coordinates = hybridEncoder.getVariableCoordinates(node)
+        val mode = modesMap.getValue(hybridEncoder.getModeOfNode(node))
+
+        if (mode.invariantCondition is ParameterHybridCondition) {
+            var parameterCondition = mode.invariantCondition
+            return getValidParameterBounds(coordinates, parameterCondition)
+        }
+
+        if (mode.invariantCondition.eval(coordinates))
+            return getFullParamSpace()
+
+        return null
+    }
+
+
     private fun addLocalTransitions(transitions: MutableList<Transition<MutableSet<Rectangle>>>,
-                                    currentMode: HybridMode, node: Int, isSuccessors: Boolean) {
+                                    currentMode: HybridMode, node: Int, isSuccessors: Boolean,
+                                    currentInvariantBounds: Rectangle) {
         val nodeInStateModel = hybridEncoder.nodeInLocalMode(node)
 
         with(currentMode.rectangleOdeModel) {
             val localSuccessors = nodeInStateModel
                     .successors(isSuccessors)
                     .asSequence()
-                    .filter { transition ->
-                        currentMode.invariantCondition.eval(hybridEncoder.getVariableCoordinates(transition.target))
+                    .mapNotNull {
+                        val bounds = getNodeInvariantBounds(it.target)
+                        if ( bounds == null ) {
+                            null
+                        } else {
+                            Transition(it.target, it.direction, mergeBounds(it.bound, bounds, currentInvariantBounds))
+                        }
                     }
                     .map{ Transition(hybridEncoder.nodeInHybrid(currentMode.label, it.target), it.direction, it.bound) }
 
@@ -263,7 +287,7 @@ class HybridModel(
     }
 
 
-    private fun getValidParameterBounds(fromCoordinates: IntArray, condition: ParameterHybridCondition): MutableSet<Rectangle> {
+    private fun getValidParameterBounds(fromCoordinates: IntArray, condition: ParameterHybridCondition): Rectangle? {
         val variableThresholdIndex = fromCoordinates[variableOrder.indexOf(condition.variable.name)]
         val variableValue = condition.variable.thresholds[variableThresholdIndex]
         val allParameterBounds = parameters.flatMap { listOf(it.range.first, it.range.second) }.toDoubleArray()
@@ -276,7 +300,7 @@ class HybridModel(
             // Variable should be bigger then allowed parameters
             if (variableValue < parameterLowerBound) {
                 // Variable value is lesser then all allowed param. values -> there are no ok params
-                return emptySet<Rectangle>().toMutableSet()
+                return null
             } else if (variableValue < parameterUpperBound) {
                 // Only a part of param. space is ok -> need to update
                 allParameterBounds[parameterUpperBoundIndex] = variableValue
@@ -288,7 +312,7 @@ class HybridModel(
             // Variable should be lesser then allowed parameters
             if (variableValue > parameterUpperBound) {
                 // Variable value is greater then all allowed param. values -> there are no ok params
-                return emptySet<Rectangle>().toMutableSet()
+                return null
             } else if (variableValue > parameterLowerBound) {
                 // Only a part of param. space is ok -> need to update
                 allParameterBounds[parameterLowerBoundIndex] = variableValue
@@ -297,7 +321,7 @@ class HybridModel(
             }
         }
 
-        return mutableSetOf(Rectangle(allParameterBounds))
+        return Rectangle(allParameterBounds)
     }
 
 
@@ -329,5 +353,34 @@ class HybridModel(
         }
 
         return result
+    }
+
+
+    private fun getFullParamSpace(): Rectangle {
+        return Rectangle(parameters.flatMap{ listOf(it.range.first, it.range.second) }.toDoubleArray())
+    }
+
+
+    private fun mergeBounds(bounds1: Rectangle, bounds2: Rectangle): MutableSet<Rectangle> {
+        var resultParams = bounds1.intersect(bounds2, DoubleArray(parameters.size * 2))
+        return if (resultParams == null)
+            emptySet<Rectangle>().toMutableSet()
+        else
+            List<Rectangle>(1) {resultParams}.toMutableSet()
+    }
+
+
+    private fun mergeBounds(bounds1: MutableSet<Rectangle>, bounds2: Rectangle): MutableSet<Rectangle> {
+        return bounds1
+                .mapNotNull { it.intersect(bounds2, DoubleArray(parameters.size * 2)) }
+                .toMutableSet()
+    }
+
+    private fun mergeBounds(bounds1: MutableSet<Rectangle>, bounds2: Rectangle, bounds3: Rectangle): MutableSet<Rectangle> {
+        return mergeBounds(mergeBounds(bounds1, bounds2), bounds3)
+    }
+
+    private fun mergeBounds(bounds1: Rectangle, bounds2: Rectangle, bounds3: Rectangle): MutableSet<Rectangle> {
+        return mergeBounds(mergeBounds(bounds1, bounds2), bounds3)
     }
 }
