@@ -25,7 +25,7 @@ fun printJsonHybridModelResults(hybridModel: HybridModel, result: Map<String, Li
 }
 
 
-private fun printJsonRectResults(model: OdeModel, result: Map<String, List<StateMap<Set<Rectangle>>>>): String {
+fun printJsonRectResults(model: OdeModel, result: Map<String, List<StateMap<Set<Rectangle>>>>): String {
     val stateIndexMapping = HashMap<Int, Int>()
     val states = ArrayList<Int>()
     val paramsIndexMapping = HashMap<Set<Rectangle>, Int>()

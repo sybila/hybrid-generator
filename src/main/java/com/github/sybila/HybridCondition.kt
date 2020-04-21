@@ -45,6 +45,18 @@ class ConjunctionHybridCondition(
 }
 
 
+class CustomHybridCondition(
+        private val variableIndex: Int,
+        private val thresholdIndex: Int,
+        private val gt: Boolean
+) : HybridCondition {
+
+    override fun eval(variableCoordinates: IntArray): Boolean {
+        return variableCoordinates[variableIndex] > thresholdIndex == gt
+    }
+
+}
+
 /**
  * Represents a comparison of a variable value with a constant
  * @param variable which is compared
