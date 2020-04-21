@@ -39,10 +39,10 @@ class DiauxShiftModelTest {
 
     private fun modelBuilder(dataFile: Path) = HybridModelBuilder()
             .withModesWithConjunctionInvariants(
-                    listOf("offOff", "offOn", "onOff", "onOn"),
-                    dataFile,
-                    listOf(offOffPath, offOnPath, onOffPath, onOnPath),
-                    listOf(
+                    labels = listOf("offOff", "offOn", "onOff", "onOn"),
+                    pathToData = dataFile,
+                    pathToOdes = listOf(offOffPath, offOnPath, onOffPath, onOnPath),
+                    invariants = listOf(
                             listOf(c1BelowThreshold, rpAboveThreshold),
                             listOf(c1BelowThreshold, rpBelowThreshold),
                             listOf(c1BelowThreshold, rpBelowThreshold),
